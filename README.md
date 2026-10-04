@@ -39,4 +39,13 @@ for _ in range(1000):
 print(float(out.ia_rate), float(out.ii_rate))
 ```
 
+One-line Gymnasium augmentation (pole joint = obs indices 2, 3):
+
+```python
+import gymnasium as gym
+from bioafferent.wrappers.gymnasium import wrap
+
+env = wrap(gym.make("CartPole-v1"), joints=[(2, 3)])
+```
+
 See `examples/` and `docs/` for details.

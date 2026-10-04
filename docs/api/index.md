@@ -19,6 +19,7 @@ Step signatures:
 
 All steps broadcast scalar / `(muscles,)` / `(batch, muscles)` inputs against
 the state batch shape. `rollout(state, ...)` runs `(time, ...)` sequences via
-`jax.lax.scan`. Wrappers: `AfferentWrapper`, `DictInfoAdapter`,
-`MuJoCoMuscleSet`/`extract_mujoco_mechanics`, `MJXMuscleConfig`/
+`jax.lax.scan`. Wrappers: `AfferentWrapper`, `DictInfoAdapter`, `JointAdapter`, `wrap`
+(one-line joint-space augmentation), `MuJoCoMuscleSet`/
+`extract_mujoco_mechanics`, `MJXMuscleConfig`/
 `extract_mjx_mechanics`/`mjx_afferent_step`.

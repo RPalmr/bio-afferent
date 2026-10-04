@@ -66,6 +66,124 @@ class DictInfoAdapter:
         return MechanicalState(length=L, velocity=V, force=F)
 
 
+class JointAdapter:
+    """Adapter mapping joint positions/velocities to agonist/antagonist muscles.
+
+    Each ``(pos, vel)`` index pair in ``joints`` produces two muscles whose
+    lengths vary oppositely about rest length::
+
+        L_agonist = 1 - r * q        V_agonist = -r * qd
+        L_antagonist = 1 + r * q     V_antagonist = +r * qd
+
+    with dimensionless moment arm ``r``. Tendon force is not observable from
+    kinematics, so it defaults to a constant ``rest_force`` (Ib then reports
+    baseline tone) unless ``force_idx`` names per-muscle effort observations.
+    This is a demo-grade default with explicit assumptions — envs with real
+    musculature should supply a dedicated adapter.
+    """
+
+    def __init__(
+        self,
+        joints: list[tuple[int, int]],
+        moment_arm: float = 0.05,
+        rest_force: float = 10.0,
+        force_idx: list[int] | None = None,
+    ) -> None:
+        if not joints:
+            raise ConfigurationError(
+                "joints must be a non-empty list of (pos_idx, vel_idx) pairs."
+            )
+        if not moment_arm > 0.0:
+            raise ConfigurationError("moment_arm must be positive.")
+        if force_idx is not None and len(force_idx) != 2 * len(joints):
+            raise ConfigurationError(
+                "force_idx must name one entry per muscle "
+                f"({2 * len(joints)}), got {len(force_idx)}."
+            )
+        self.joints = list(joints)
+        self.moment_arm = moment_arm
+        self.rest_force = rest_force
+        self.force_idx = list(force_idx) if force_idx is not None else None
+        self.n_muscles = 2 * len(joints)
+
+    def extract(self, env: object, obs: object, info: dict) -> MechanicalState:
+        try:
+            arr = np.asarray(obs, dtype=np.float32).ravel()
+        except (TypeError, ValueError) as exc:
+            raise ConfigurationError(
+                "JointAdapter needs a flat array observation, got "
+                f"{type(obs).__name__}."
+            ) from exc
+        lengths, velocities = [], []
+        for pos_i, vel_i in self.joints:
+            if pos_i >= arr.size or vel_i >= arr.size:
+                raise ConfigurationError(
+                    f"joint index ({pos_i}, {vel_i}) out of range for "
+                    f"observation of size {arr.size}."
+                )
+            q, qd = float(arr[pos_i]), float(arr[vel_i])
+            lengths += [1.0 - self.moment_arm * q, 1.0 + self.moment_arm * q]
+            velocities += [-self.moment_arm * qd, self.moment_arm * qd]
+        if self.force_idx is None:
+            force = np.full(self.n_muscles, self.rest_force, np.float32)
+        else:
+            force = np.asarray([arr[i] for i in self.force_idx], dtype=np.float32)
+            force = np.maximum(force, 0.0)
+        return MechanicalState(
+            length=jnp.asarray(np.array(lengths, np.float32)),
+            velocity=jnp.asarray(np.array(velocities, np.float32)),
+            force=jnp.asarray(force),
+        )
+
+
+def wrap(
+    env: Any,
+    joints: list[tuple[int, int]],
+    moment_arm: float = 0.05,
+    rest_force: float = 10.0,
+    force_idx: list[int] | None = None,
+    observation_mode: str = "concat",
+    seed: int | None = None,
+    spindle_config: SpindleConfig | None = None,
+    gto_config: GTOConfig | None = None,
+    encoder_config: EncoderConfig | None = None,
+    dt: float = 0.001,
+    gamma_dynamic: float = 0.0,
+    gamma_static: float = 0.0,
+) -> Any:
+    """One-line afferent augmentation for joint-space Gymnasium envs.
+
+    Example::
+
+        import gymnasium as gym
+        from bioafferent.wrappers.gymnasium import wrap
+        env = wrap(gym.make("CartPole-v1"), joints=[(2, 3)])
+
+    ``joints`` lists ``(pos_idx, vel_idx)`` observation indices; each joint
+    yields an agonist/antagonist muscle pair (see :class:`JointAdapter`).
+    Remaining arguments mirror :class:`AfferentWrapper`.
+    """
+    adapter = JointAdapter(
+        joints=joints,
+        moment_arm=moment_arm,
+        rest_force=rest_force,
+        force_idx=force_idx,
+    )
+    return AfferentWrapper(
+        env,
+        adapter,
+        adapter.n_muscles,
+        spindle_config=spindle_config,
+        gto_config=gto_config,
+        encoder_config=encoder_config,
+        dt=dt,
+        gamma_dynamic=gamma_dynamic,
+        gamma_static=gamma_static,
+        observation_mode=observation_mode,
+        seed=seed,
+    )
+
+
 class AfferentWrapper(_Base):  # type: ignore[valid-type, misc]
     """Gymnasium wrapper adding Ia/II/Ib ([+ spikes]) to observations.
 
