@@ -13,7 +13,6 @@ from bioafferent.core.exceptions import ConfigurationError, UnsupportedBackendEr
 from bioafferent.wrappers.base import MechanicalState
 from bioafferent.wrappers.mjx import (
     MJXAfferents,
-    MJXMuscleConfig,
     default_mjx_models,
     extract_mjx_mechanics,
     mjx_afferent_step,
@@ -40,29 +39,36 @@ def _mujoco_present(monkeypatch):
     return mj
 
 
-def test_mujoco_adapter_with_fake(_mujoco_present):
-    from bioafferent.wrappers.mujoco import MuJoCoMuscleSet, extract_mujoco_mechanics
+def test_mujoco_defaults_model_everything(_mujoco_present):
+    from bioafferent.wrappers.mujoco import extract_mujoco_mechanics
 
-    muscles = MuJoCoMuscleSet(actuator_ids=(0, 2, 4))
-    mech = extract_mujoco_mechanics(None, _FakeData(), muscles)
-    assert mech.length.shape == (3,)
+    mech = extract_mujoco_mechanics(_FakeData())
+    assert mech.length.shape == (6,)
+    assert bool(jnp.all(mech.length > 0.0))
     assert bool(jnp.all(mech.force >= 0.0))
 
 
-def test_mujoco_adapter_rejects_bad_ids(_mujoco_present):
-    from bioafferent.wrappers.mujoco import MuJoCoMuscleSet, extract_mujoco_mechanics
+def test_mujoco_subset_and_rest_lengths(_mujoco_present):
+    from bioafferent.wrappers.mujoco import extract_mujoco_mechanics
+
+    mech = extract_mujoco_mechanics(
+        _FakeData(), actuator_ids=(0, 2, 4), rest_lengths=(0.1, 0.1, 0.1)
+    )
+    assert mech.length.shape == (3,)
+
+
+def test_mujoco_rejects_bad_ids(_mujoco_present):
+    from bioafferent.wrappers.mujoco import extract_mujoco_mechanics
 
     with pytest.raises(ConfigurationError):
-        extract_mujoco_mechanics(
-            None, _FakeData(), MuJoCoMuscleSet(actuator_ids=(0, 99))
-        )
+        extract_mujoco_mechanics(_FakeData(), actuator_ids=(0, 99))
 
 
 def test_mujoco_unsupported_structure(_mujoco_present):
-    from bioafferent.wrappers.mujoco import MuJoCoMuscleSet, extract_mujoco_mechanics
+    from bioafferent.wrappers.mujoco import extract_mujoco_mechanics
 
     with pytest.raises(UnsupportedBackendError):
-        extract_mujoco_mechanics(None, _BareData(), MuJoCoMuscleSet(actuator_ids=(0,)))
+        extract_mujoco_mechanics(_BareData())
 
 
 def test_mujoco_missing_backend_raises():
@@ -70,34 +76,36 @@ def test_mujoco_missing_backend_raises():
 
     if mj.mujoco is not None:
         pytest.skip("real mujoco installed; missing-backend path N/A")
-    from bioafferent.wrappers.mujoco import MuJoCoMuscleSet, extract_mujoco_mechanics
+    from bioafferent.wrappers.mujoco import extract_mujoco_mechanics
 
     with pytest.raises(UnsupportedBackendError, match="not installed"):
-        extract_mujoco_mechanics(None, _FakeData(), MuJoCoMuscleSet(actuator_ids=(0,)))
+        extract_mujoco_mechanics(_FakeData())
 
 
-def _mjx_cfg():
-    return MJXMuscleConfig(
-        actuator_ids=jnp.array([0, 2, 4]),
-        rest_lengths=jnp.array([0.10, 0.10, 0.10]),
-    )
-
-
-def test_mjx_extract_duck_typed():
+def test_mjx_extract_defaults():
     data = _FakeData()
     data.actuator_length = jnp.asarray(data.actuator_length)
     data.actuator_velocity = jnp.asarray(data.actuator_velocity)
     data.actuator_force = jnp.asarray(data.actuator_force)
-    mech = extract_mjx_mechanics(data, _mjx_cfg())
+    mech = extract_mjx_mechanics(data)
     assert isinstance(mech, MechanicalState)
-    assert mech.length.shape == (3,)
-    assert bool(jnp.all(mech.length > 0))
+    assert mech.length.shape == (6,)
     assert bool(jnp.all(mech.force >= 0.0))
+
+
+def test_mjx_extract_subset():
+    data = _FakeData()
+    mech = extract_mjx_mechanics(
+        data,
+        actuator_ids=jnp.array([0, 2, 4]),
+        rest_lengths=jnp.array([0.10, 0.10, 0.10]),
+    )
+    assert mech.length.shape == (3,)
 
 
 def test_mjx_extract_unsupported():
     with pytest.raises(UnsupportedBackendError):
-        extract_mjx_mechanics(_BareData(), _mjx_cfg())
+        extract_mjx_mechanics(_BareData())
 
 
 def test_mjx_afferent_step_jit():
@@ -113,7 +121,7 @@ def test_mjx_afferent_step_jit():
     jit_step = jax.jit(
         lambda ss, gs, m: mjx_afferent_step(ss, gs, m, spindle, gto, 40.0, 30.0)
     )
-    new_ss, new_gs, aff = jit_step(s_state, g_state, mech)
+    _, _, aff = jit_step(s_state, g_state, mech)
     assert isinstance(aff, MJXAfferents)
     assert bool(jnp.allclose(aff.ia_rate, ref[2].ia_rate, atol=1e-6))
     assert bool(jnp.allclose(aff.ib_rate, ref[2].ib_rate, atol=1e-6))
@@ -121,18 +129,13 @@ def test_mjx_afferent_step_jit():
 
 def test_mjx_full_path_scan():
     spindle, gto = default_mjx_models()
-    mech0 = MechanicalState(
-        length=jnp.full((2,), 1.0),
-        velocity=jnp.zeros((2,)),
-        force=jnp.full((2,), 5.0),
-    )
 
     def body(carry, k):
         ss, gs = carry
         mech = MechanicalState(
-            length=mech0.length + 0.0001 * k,
+            length=jnp.full((2,), 1.0) + 0.0001 * k,
             velocity=jnp.full((2,), 0.05),
-            force=mech0.force,
+            force=jnp.full((2,), 5.0),
         )
         nss, ngs, aff = mjx_afferent_step(ss, gs, mech, spindle, gto)
         return (nss, ngs), aff.ia_rate

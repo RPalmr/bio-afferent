@@ -11,8 +11,9 @@ Dependency direction: `core <- models <- wrappers`.
   `encoding` (`AfferentEncoder`); immutable validated configs
   (`SpindleConfig`, `GTOConfig`, `EncoderConfig`, `IntegrationConfig`).
 - **wrappers**: `base` (`MechanicalState`, `MechanicalAdapter` protocol),
-  `gymnasium` (`AfferentWrapper`, `DictInfoAdapter`), `mujoco` (CPU adapter,
-  optional dep), `mjx` (JAX-native path, optional dep).
+  `gymnasium` (`wrap` zero-config entry point, `AfferentWrapper`,
+  `DictInfoAdapter`), `mujoco` (CPU adapter, optional dep), `mjx`
+  (JAX-native path, optional dep).
 - **configs**: default factories. **utils**: typing, PRNG helpers, SI units,
   logging (quiet by default).
 

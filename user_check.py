@@ -4,8 +4,6 @@ Exercises the public API end to end (spindle, GTO, spike encoding, JAX
 transforms, and the Gymnasium wrapper when installed) with plain asserts.
 """
 
-import sys
-
 import jax
 import jax.numpy as jnp
 
@@ -39,11 +37,15 @@ for i in range(2700):
     )
     ia_trace.append(float(out.ia_rate))
 ia_trace = jnp.array(ia_trace)
-print(f"  baseline={float(ia_trace[:500].mean()):.1f} Hz  "
-      f"peak={float(ia_trace[500:1600].max()):.1f} Hz  "
-      f"hold={float(ia_trace[-200:].mean()):.1f} Hz  II={float(out.ii_rate):.1f} Hz")
-check("dynamic overshoot then adaptation",
-      ia_trace[500:1600].max() > ia_trace[-200:].mean() > ia_trace[:500].mean())
+print(
+    f"  baseline={float(ia_trace[:500].mean()):.1f} Hz  "
+    f"peak={float(ia_trace[500:1600].max()):.1f} Hz  "
+    f"hold={float(ia_trace[-200:].mean()):.1f} Hz  II={float(out.ii_rate):.1f} Hz"
+)
+check(
+    "dynamic overshoot then adaptation",
+    ia_trace[500:1600].max() > ia_trace[-200:].mean() > ia_trace[:500].mean(),
+)
 
 print("== 2. GTO force response ==")
 gto = GolgiTendonOrgan()
@@ -54,8 +56,10 @@ for force in (0.0, 20.0, 200.0, 5000.0):
         gstate, gout = gto.step(gstate, force, dt=0.001)
     rates[force] = float(gout.ib_rate)
 print("  Ib rates:", {f: round(r, 1) for f, r in rates.items()})
-check("monotonic + saturating",
-      rates[0.0] <= rates[20.0] <= rates[200.0] <= rates[5000.0] <= 250.0)
+check(
+    "monotonic + saturating",
+    rates[0.0] <= rates[20.0] <= rates[200.0] <= rates[5000.0] <= 250.0,
+)
 
 print("== 3. spike encoding ==")
 key = jax.random.PRNGKey(0)
@@ -80,10 +84,10 @@ check("vmap over 8 muscles", vout.ia_rate.shape == (8,))
 
 print("== 5. gymnasium wrapper ==")
 try:
+    import gymnasium as gym
     import numpy as np
 
     from bioafferent.wrappers.gymnasium import AfferentWrapper, DictInfoAdapter
-    import gymnasium as gym
 
     class ToyEnv(gym.Env):
         def __init__(self):
@@ -104,12 +108,14 @@ try:
                 "muscle_force": np.full(2, 15.0),
             }
 
-    env = AfferentWrapper(ToyEnv(), DictInfoAdapter(2), 2,
-                          observation_mode="dict", seed=0)
+    env = AfferentWrapper(
+        ToyEnv(), DictInfoAdapter(2), 2, observation_mode="dict", seed=0
+    )
     obs, _ = env.reset()
     obs, _, _, _, _ = env.step(np.zeros(1, np.float32))
-    check("dict obs has afferents",
-          set(obs) >= {"obs", "ia_rate", "ii_rate", "ib_rate"})
+    check(
+        "dict obs has afferents", set(obs) >= {"obs", "ia_rate", "ii_rate", "ib_rate"}
+    )
     print(f"  Ia={obs['ia_rate']} II={obs['ii_rate']} Ib={obs['ib_rate']}")
 except ImportError:
     print("  skipped: gymnasium not installed")

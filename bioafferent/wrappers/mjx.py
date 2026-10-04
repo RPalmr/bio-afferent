@@ -4,10 +4,13 @@ Preferred architecture::
 
     MJX state -> JAX mechanical arrays -> JAX sensory model -> JAX observation
 
-`extract_mjx_mechanics` reads ``actuator_length``/``actuator_velocity``/
-/// ``actuator_force`` from an MJX ``Data`` pytree (or duck-typed equivalent)
-using pure JAX ops, and `mjx_afferent_step` advances spindle + GTO states in
-one JIT-compilable function. No NumPy conversion, no device transfer.
+Zero-config usage reads every actuator, normalizing by the current snapshot::
+
+    from bioafferent.wrappers.mjx import extract_mjx_mechanics
+    mech = extract_mjx_mechanics(mjx_data)
+
+`mjx_afferent_step` then advances spindle + GTO states in one JIT-compilable
+function. No NumPy conversion, no device transfer.
 """
 
 from __future__ import annotations
@@ -36,22 +39,19 @@ def mjx_available() -> bool:
     return _mjx is not None
 
 
-class MJXMuscleConfig(NamedTuple):
-    """Static muscle indexing for the MJX path (all leaves static/constant)."""
-
-    actuator_ids: jax.Array  # int array, shape (muscles,)
-    rest_lengths: jax.Array  # float array, shape (muscles,), model length units
-    length_scale: float = 1.0
-    velocity_scale: float = 1.0
-    force_scale: float = 1.0
-
-
-def extract_mjx_mechanics(data: Any, cfg: MJXMuscleConfig) -> MechanicalState:
+def extract_mjx_mechanics(
+    data: Any,
+    actuator_ids: Any = None,
+    rest_lengths: Any = None,
+    length_scale: float = 1.0,
+    velocity_scale: float = 1.0,
+    force_scale: float = 1.0,
+) -> MechanicalState:
     """Pure-JAX extraction of per-muscle mechanics from MJX ``Data``.
 
-    Reads ``data.actuator_length`` etc. with ``jnp.take``; works on real MJX
-    Data pytrees and on duck-typed test doubles. Raises
-    :class:`UnsupportedBackendError` if the arrays are absent.
+    Defaults model every actuator with rest lengths from the current snapshot.
+    Works on real MJX Data pytrees and duck-typed test doubles. Raises
+    :class:`UnsupportedBackendError` when the actuator arrays are absent.
     """
     try:
         alen = jnp.asarray(data.actuator_length)
@@ -62,12 +62,17 @@ def extract_mjx_mechanics(data: Any, cfg: MJXMuscleConfig) -> MechanicalState:
             "MJX data lacks actuator_length/_velocity/_force arrays; "
             "this model structure is unsupported."
         ) from exc
-    ids = jnp.asarray(cfg.actuator_ids, dtype=jnp.int32)
-    rest = jnp.asarray(cfg.rest_lengths)
-    length = jnp.take(alen, ids, axis=0) * cfg.length_scale / rest
-    velocity = jnp.take(avel, ids, axis=0) * cfg.velocity_scale / rest
-    force = jnp.maximum(jnp.take(afor, ids, axis=0) * cfg.force_scale, 0.0)
-    return MechanicalState(length=length, velocity=velocity, force=force)
+    ids = (
+        jnp.arange(alen.shape[0])
+        if actuator_ids is None
+        else jnp.asarray(actuator_ids, dtype=jnp.int32)
+    )
+    rest = alen[ids] if rest_lengths is None else jnp.asarray(rest_lengths)
+    return MechanicalState(
+        length=jnp.take(alen, ids, axis=0) * length_scale / rest,
+        velocity=jnp.take(avel, ids, axis=0) * velocity_scale / rest,
+        force=jnp.maximum(jnp.take(afor, ids, axis=0) * force_scale, 0.0),
+    )
 
 
 class MJXAfferents(NamedTuple):

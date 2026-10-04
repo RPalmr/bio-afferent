@@ -1,6 +1,7 @@
 """Bioafferent: JAX proprioceptive sensory feedback (spindle Ia/II, GTO Ib)."""
 
 from bioafferent._version import __version__
+from bioafferent.afferents import AfferentRates, Afferents
 from bioafferent.core.exceptions import (
     BioafferentError,
     ConfigurationError,
@@ -18,9 +19,13 @@ from bioafferent.models.gto import GolgiTendonOrgan
 from bioafferent.models.gto_parameters import GTOConfig
 from bioafferent.models.spindle import MuscleSpindle
 from bioafferent.models.spindle_parameters import SpindleConfig
+from bioafferent.wrappers.gymnasium import AfferentWrapper, wrap
 
 __all__ = [
     "AfferentEncoder",
+    "AfferentRates",
+    "AfferentWrapper",
+    "Afferents",
     "BioafferentError",
     "ConfigurationError",
     "EncoderConfig",
@@ -39,4 +44,5 @@ __all__ = [
     "SpindleState",
     "UnsupportedBackendError",
     "__version__",
+    "wrap",
 ]

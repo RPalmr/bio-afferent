@@ -39,4 +39,7 @@ for _ in range(1000):
 print(float(out.ia_rate), float(out.ii_rate))
 ```
 
-See `examples/` and `docs/` for details.
+Prefer fewer moving parts? `Afferents(n_muscles=2).step(length, velocity,
+force)` hides states and defaults the rest; `wrap(gym.make("CartPole-v1"))`
+does the same for Gymnasium envs. See `examples/`, `docs/usage.md`, and
+`docs/` for details.

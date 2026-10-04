@@ -228,7 +228,7 @@ class MuscleSpindle:
         gamma_static: jax.Array | float = 0.0,
         dt: float = 0.001,
     ) -> tuple[SpindleState, SpindleOutput]:
-        """Run a full ``(time, ...)`` input sequence with ``jax.lax.scan`.
+        """Run a full ``(time, ...)`` input sequence with ``jax.lax.scan``.
 
         Leading axis of ``length``/``velocity`` is time; remaining axes must
         broadcast to the state batch shape. Returns final state and stacked

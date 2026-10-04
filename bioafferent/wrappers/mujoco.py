@@ -1,25 +1,24 @@
 """MuJoCo (CPU, NumPy-side) adapter: actuator mechanics to MechanicalState.
 
-Assumptions (documented, checked at runtime where possible):
+Zero-config usage models every actuator as a muscle, measuring rest lengths
+from the current data snapshot::
 
-- Muscles are MuJoCo actuators with position transmission (tendon/muscle
-  length available as ``data.actuator_length``). ``actuator_velocity`` and
-  ``actuator_force`` supply stretch velocity and tendon force.
-- ``length`` is normalized by the per-actuator rest length measured (or
-  supplied) at model load: ``L = actuator_length / rest_length``.
-- Units are the model's native units; convert to SI (m, m/s, N) *before*
-  constructing the adapter if the model uses other scales.
-- Only fixed numeric id lists are supported; equality/branching structures
-  without actuator arrays raise :class:`UnsupportedBackendError`.
+    from bioafferent.wrappers.mujoco import extract_mujoco_mechanics
+    mech = extract_mujoco_mechanics(data)
 
-The core physiological models never see MuJoCo objects: this module converts
-to plain JAX arrays at the boundary (one host-side conversion per step; the
-sensory model itself stays JAX-native).
+Pass ``actuator_ids`` to select a subset and ``rest_lengths`` to fix the L/L0
+normalization instead of measuring it. Assumptions (checked at runtime):
+
+- Position-transmission actuators expose ``actuator_length/_velocity/_force``.
+- Units are the model's native units; convert to SI (m, m/s, N) with the
+  ``*_scale`` factors when the model uses other scales.
+
+The core models never see MuJoCo objects: this module converts to plain JAX
+arrays at the boundary (one host-side conversion per step).
 """
 
 from __future__ import annotations
 
-from dataclasses import dataclass
 from typing import Any
 
 import jax.numpy as jnp
@@ -34,59 +33,25 @@ except ImportError:  # pragma: no cover - mujoco is an optional dependency
     mujoco = None  # type: ignore[assignment]
 
 
-def _require_mujoco() -> None:
+def extract_mujoco_mechanics(
+    data: Any,
+    actuator_ids: Any = None,
+    rest_lengths: Any = None,
+    length_scale: float = 1.0,
+    velocity_scale: float = 1.0,
+    force_scale: float = 1.0,
+) -> MechanicalState:
+    """Read actuator length/velocity/force into a :class:`MechanicalState`.
+
+    Works with real ``mujoco.MjData`` and duck-typed test doubles. Raises
+    :class:`UnsupportedBackendError` when mujoco is missing or the data lacks
+    actuator arrays.
+    """
     if mujoco is None:
         raise UnsupportedBackendError(
             "mujoco is not installed. Install the 'mujoco' extra: "
             "pip install bioafferent[mujoco]."
         )
-
-
-@dataclass
-class MuJoCoMuscleSet:
-    """Identifies which actuators are treated as muscles.
-
-    Attributes:
-        actuator_ids: MuJoCo actuator ids in muscle order.
-        rest_lengths: per-actuator rest length in model length units, used for
-            L/L0 normalization. If None, measured from the data at bind time
-            (qpos0 forward pass) — document which you used.
-        length_scale: multiply model lengths by this to get meters.
-        velocity_scale: multiply model velocities by this to get m/s.
-        force_scale: multiply model forces by this to get newton.
-    """
-
-    actuator_ids: tuple[int, ...]
-    rest_lengths: tuple[float, ...] | None = None
-    length_scale: float = 1.0
-    velocity_scale: float = 1.0
-    force_scale: float = 1.0
-
-    def __post_init__(self) -> None:
-        if len(self.actuator_ids) == 0:
-            raise ConfigurationError("actuator_ids must be non-empty.")
-        if self.rest_lengths is not None and len(self.rest_lengths) != len(
-            self.actuator_ids
-        ):
-            raise ConfigurationError("rest_lengths must match actuator_ids in size.")
-        if any(v <= 0.0 for v in (self.length_scale, self.velocity_scale)):
-            raise ConfigurationError("length/velocity scales must be positive.")
-        if self.force_scale <= 0.0:
-            raise ConfigurationError("force_scale must be positive.")
-
-
-def extract_mujoco_mechanics(
-    model: Any, data: Any, muscles: MuJoCoMuscleSet
-) -> MechanicalState:
-    """Read actuator length/velocity/force into a :class:`MechanicalState`.
-
-    Works with real ``mujoco.MjModel``/``MjData`` and with duck-typed test
-    doubles exposing ``actuator_length``/``actuator_velocity``/``actuator_force``
-    arrays. Rest lengths default to the current ``actuator_length`` snapshot
-    (document this calibration choice when used).
-    """
-    _require_mujoco()
-    ids = np.asarray(muscles.actuator_ids, dtype=int)
     try:
         alen = np.asarray(data.actuator_length)
         avel = np.asarray(data.actuator_velocity)
@@ -100,21 +65,26 @@ def extract_mujoco_mechanics(
         raise UnsupportedBackendError(
             "Unexpected MuJoCo actuator array shapes; unsupported configuration."
         )
-    if int(np.max(ids)) >= alen.shape[0] or int(np.min(ids)) < 0:
+    ids = (
+        np.arange(alen.shape[0])
+        if actuator_ids is None
+        else np.asarray(actuator_ids, dtype=int)
+    )
+    if ids.size == 0 or int(ids.max()) >= alen.shape[0] or int(ids.min()) < 0:
+        raise ConfigurationError(f"actuator_ids out of range for nu={alen.shape[0]}.")
+    rest = (
+        alen[ids].astype(float)
+        if rest_lengths is None
+        else np.asarray(rest_lengths, dtype=float)
+    )
+    if rest.shape != ids.shape or bool(np.any(rest <= 0.0)):
         raise ConfigurationError(
-            f"actuator_ids {tuple(ids)} out of range for nu={alen.shape[0]}."
+            "rest_lengths must be positive with one entry per muscle."
         )
-    if muscles.rest_lengths is None:
-        rest = alen[ids].astype(float)
-    else:
-        rest = np.asarray(muscles.rest_lengths, dtype=float)
-    if bool(np.any(rest <= 0.0)):
-        raise ConfigurationError("rest_lengths must be strictly positive.")
-    length = (alen[ids] * muscles.length_scale) / rest
-    velocity = (avel[ids] * muscles.velocity_scale) / rest
-    force = np.maximum(afor[ids] * muscles.force_scale, 0.0)
+    if min(length_scale, velocity_scale, force_scale) <= 0.0:
+        raise ConfigurationError("scale factors must be positive.")
     return MechanicalState(
-        length=jnp.asarray(length, dtype=jnp.float32),
-        velocity=jnp.asarray(velocity, dtype=jnp.float32),
-        force=jnp.asarray(force, dtype=jnp.float32),
+        length=jnp.asarray(alen[ids] * length_scale / rest, dtype=jnp.float32),
+        velocity=jnp.asarray(avel[ids] * velocity_scale / rest, dtype=jnp.float32),
+        force=jnp.asarray(np.maximum(afor[ids] * force_scale, 0.0), dtype=jnp.float32),
     )
