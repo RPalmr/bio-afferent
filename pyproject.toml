@@ -1,0 +1,52 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "bioafferent"
+version = "0.1.0"
+description = "JAX-based proprioceptive sensory feedback: muscle spindle (Ia/II) and Golgi tendon organ (Ib) models with spike encoding"
+readme = "README.md"
+license = { text = "MIT" }
+requires-python = ">=3.10"
+authors = [{ name = "Bioafferent Contributors" }]
+keywords = ["neuroscience", "proprioception", "muscle-spindle", "jax", "mujoco", "gymnasium"]
+classifiers = [
+  "Development Status :: 3 - Alpha",
+  "Intended Audience :: Science/Research",
+  "License :: OSI Approved :: MIT License",
+  "Programming Language :: Python :: 3",
+  "Topic :: Scientific/Engineering",
+]
+dependencies = [
+  "jax>=0.4.20",
+  "numpy>=1.24",
+]
+
+[project.optional-dependencies]
+gymnasium = ["gymnasium>=0.29"]
+mujoco = ["mujoco>=3.0"]
+dev = ["pytest>=7", "ruff>=0.1", "mypy>=1.0"]
+
+[project.urls]
+Repository = "https://example.org/bioafferent"
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["bioafferent*"]
+
+[tool.ruff]
+line-length = 88
+target-version = "py310"
+
+[tool.ruff.lint]
+select = ["E", "F", "I", "UP", "B", "ASYNC", "W"]
+
+[tool.mypy]
+python_version = "3.12"
+strict = false
+ignore_missing_imports = true
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+addopts = "-q"

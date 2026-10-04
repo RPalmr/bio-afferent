@@ -1,0 +1,19 @@
+cff-version: 1.2.0
+title: Bioafferent
+version: 0.1.0
+date-released: 2026-10-03
+license: MIT
+authors:
+  - name: Bioafferent Contributors
+repository-code: https://example.org/bioafferent
+keywords:
+  - proprioception
+  - muscle spindle
+  - golgi tendon organ
+  - computational neuroscience
+  - jax
+preferred-citation:
+  type: software
+  title: Bioafferent
+  version: 0.1.0
+  license: MIT
