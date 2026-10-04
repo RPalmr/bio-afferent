@@ -1,0 +1,118 @@
+"""Unit tests: spike encoding — shapes, reproducibility, statistics."""
+
+import jax
+import jax.numpy as jnp
+import pytest
+
+from bioafferent import AfferentEncoder, EncoderConfig
+from bioafferent.core.exceptions import InvalidStateError
+
+
+@pytest.mark.parametrize("mode", ["poisson", "inhomogeneous", "gamma"])
+def test_encoder_shapes(mode):
+    enc = AfferentEncoder(EncoderConfig(mode=mode))
+    st = enc.init_state((2, 3))
+    key = jax.random.PRNGKey(0)
+    key2, st2, out = enc.step(key, st, jnp.full((2, 3), 50.0), 0.001)
+    assert out.spikes.shape == (2, 3)
+    assert out.spikes.dtype == bool
+    assert st2.residual.shape == (2, 3)
+    assert key2.shape == key.shape
+
+
+@pytest.mark.parametrize("mode", ["poisson", "inhomogeneous", "gamma"])
+def test_encoder_reproducible(mode):
+    enc = AfferentEncoder(EncoderConfig(mode=mode))
+    key = jax.random.PRNGKey(42)
+
+    def run():
+        return enc.step(key, enc.init_state((8,)), jnp.full((8,), 60.0), 0.001)
+
+    _, _, o1 = run()
+    _, _, o2 = run()
+    assert bool(jnp.array_equal(o1.spikes, o2.spikes))
+
+
+def test_different_keys_differ_statistically():
+    enc = AfferentEncoder(EncoderConfig(mode="poisson"))
+    outs = []
+    for seed in range(6):
+        key = jax.random.PRNGKey(seed)
+        st = enc.init_state((200,))
+        spikes = []
+        for _ in range(50):
+            key, st, out = enc.step(key, st, jnp.full((200,), 40.0), 0.001)
+            spikes.append(out.spikes)
+        outs.append(jnp.stack(spikes))
+    counts = jnp.array([o.sum() for o in outs])
+    assert len(set(int(c) for c in counts)) > 1  # not all identical
+
+
+def test_poisson_mean_rate():
+    enc = AfferentEncoder(EncoderConfig(mode="poisson"))
+    key, st = jax.random.PRNGKey(0), enc.init_state((400,))
+    total, steps = 0, 400
+    for _ in range(steps):
+        key, st, out = enc.step(key, st, jnp.full((400,), 50.0), 0.001)
+        total += int(out.spikes.sum())
+    measured = total / (400 * steps * 0.001)
+    assert measured == pytest.approx(50.0, rel=0.15)
+
+
+def test_gamma_mean_rate_and_regularity():
+    enc = AfferentEncoder(EncoderConfig(mode="gamma", gamma_order=8))
+    key, st = jax.random.PRNGKey(1), enc.init_state((60,))
+    counts = []
+    for _ in range(2000):
+        key, st, out = enc.step(key, st, jnp.full((60,), 50.0), 0.001)
+        counts.append(out.spikes)
+    counts = jnp.stack(counts)
+    measured = float(counts.sum()) / (60 * 2000 * 0.001)
+    assert measured == pytest.approx(50.0, rel=0.15)
+    # gamma-renewal (order 8) is more regular than Poisson: Fano factor < 1
+    # measured over 100 ms windows
+    windows = counts.reshape(20, 100, 60).sum(axis=1)
+    fano = float(windows.var() / jnp.maximum(windows.mean(), 1e-9))
+    assert fano < 1.0
+
+
+def test_zero_rate_never_spikes():
+    for mode in ("poisson", "inhomogeneous", "gamma"):
+        enc = AfferentEncoder(EncoderConfig(mode=mode))
+        key, st = jax.random.PRNGKey(0), enc.init_state((4,))
+        for _ in range(20):
+            key, st, out = enc.step(key, st, jnp.zeros((4,)), 0.001)
+            assert not bool(out.spikes.any())
+
+
+def test_gamma_no_spurious_first_spike():
+    enc = AfferentEncoder(EncoderConfig(mode="gamma"))
+    _, _, out = enc.step(
+        jax.random.PRNGKey(0), enc.init_state((16,)), jnp.full((16,), 80.0), 0.001
+    )
+    assert not bool(out.spikes.any())
+
+
+def test_rejects_negative_rate():
+    enc = AfferentEncoder()
+    with pytest.raises(InvalidStateError):
+        enc.step(jax.random.PRNGKey(0), enc.init_state((2,)), jnp.full((2,), -5.0))
+
+
+def test_rejects_rate_dt_above_one():
+    enc = AfferentEncoder()
+    with pytest.raises(InvalidStateError):
+        enc.step(jax.random.PRNGKey(0), enc.init_state(()), 2000.0, 0.001)
+
+
+def test_encoder_jit_vmap():
+    enc = AfferentEncoder(EncoderConfig(mode="poisson"))
+    f = jax.jit(
+        jax.vmap(
+            lambda k, r: enc.step(k, enc.init_state(()), r, 0.001),
+            in_axes=(0, 0),
+        )
+    )
+    keys = jax.random.split(jax.random.PRNGKey(0), 8)
+    _, _, out = f(keys, jnp.full((8,), 30.0))
+    assert out.spikes.shape == (8,)
