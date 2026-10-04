@@ -24,6 +24,29 @@ simulator. Optional adapters cover Gymnasium, MuJoCo, and MuJoCo MJX.
 > documented engineering parameters, **not** the copyrighted Table 1 values of
 > Mileusnic et al. See `docs/physiology.md` for the full formulation record.
 
+## Installation
+
+```bash
+pip install bioafferent
+```
+
+With simulator integrations:
+
+```bash
+pip install "bioafferent[gymnasium]"   # Gymnasium wrapper
+pip install "bioafferent[mujoco]"      # MuJoCo / MJX adapters
+```
+
+From source:
+
+```bash
+git clone https://github.com/appliedCL/bioafferent.git
+cd bioafferent
+pip install -e .
+```
+
+Requires Python ≥3.10; JAX and NumPy install automatically.
+
 ## Quick start
 
 ```python
