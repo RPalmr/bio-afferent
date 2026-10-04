@@ -41,6 +41,8 @@ Adaptations (all coefficients in `SpindleConfig`, overridable):
    resting/hold discharge of both afferents. They are NOT Mileusnic Table 1
    values (copyrighted, paywalled) and must not be cited as such.
 
+![Ramp-and-hold Ia/II responses](_static/spindle_ramphold.png)
+
 ## Golgi tendon organ (Ib)
 
 Sources: Houk, J. & Simon, W. (1967) static properties (threshold, steep
@@ -50,6 +52,8 @@ force filtering, *J. Biomech.*
 Implemented: first-order low-pass on tendon force (tau 50 ms), then
 `Ib = b + G*x/(1 + x/F_sat)` with `x = max(F - F_thr, 0)` — monotonic,
 saturating, documented engineering combination of the reported properties.
+
+![GTO force-to-rate curve](_static/gto_curve.png)
 
 ## Spike encoding
 
