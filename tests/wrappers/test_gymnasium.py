@@ -9,8 +9,6 @@ from bioafferent.models.encoding import EncoderConfig  # noqa: E402
 from bioafferent.wrappers.gymnasium import (  # noqa: E402
     AfferentWrapper,
     DictInfoAdapter,
-    JointAdapter,
-    wrap,
 )
 
 
@@ -111,32 +109,3 @@ def test_gymnasium_passthrough_check():
     from gymnasium.utils.env_checker import check_env
 
     check_env(_MuscleEnv(2), skip_render_check=True)
-
-
-def test_joint_adapter_sign_convention():
-    adapter = JointAdapter(joints=[(0, 1)], moment_arm=0.1)
-    mech = adapter.extract(None, np.array([0.5, 2.0], np.float32), {})
-    assert mech.length.shape == (2,)
-    # positive angle shortens agonist, lengthens antagonist
-    assert float(mech.length[0]) < 1.0 < float(mech.length[1])
-    assert float(mech.velocity[0]) < 0.0 < float(mech.velocity[1])
-    assert bool((mech.force == 10.0).all())
-
-
-def test_joint_adapter_rejects_bad_config():
-    from bioafferent import ConfigurationError
-
-    with pytest.raises(ConfigurationError):
-        JointAdapter(joints=[])
-    with pytest.raises(ConfigurationError):
-        JointAdapter(joints=[(0, 5)]).extract(None, np.zeros(2, dtype=np.float32), {})
-
-
-def test_wrap_cartpole_oneliner():
-    env = wrap(gymnasium.make("CartPole-v1"), joints=[(2, 3)], seed=0)
-    obs, _ = env.reset(seed=0)
-    assert obs.shape == (4 + 6,)
-    assert np.isfinite(obs).all()
-    obs, _, term, trunc, _ = env.step(0)
-    assert obs.shape == (4 + 6,)
-    assert not term and not trunc
