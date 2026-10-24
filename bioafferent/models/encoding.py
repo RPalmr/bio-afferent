@@ -13,12 +13,16 @@ Three encoders, all with explicit JAX PRNG keys (never global RNG state):
   from ``Gamma(shape=order, mean=1/r)``. Implemented exactly via a
   time-to-next-spike residual carried in :class:`EncoderState`.
 
-All steps are pure, elementwise, and ``jit``/``vmap`` compatible. ``EncoderState``
-is only advanced by the ``gamma`` mode; Poisson modes return it unchanged.
+All modes support an optional absolute refractory period
+(``EncoderConfig.refractory_s``), enforced through a countdown carried in
+:class:`EncoderState`.
+
+All steps are pure, elementwise, and ``jit``/``vmap`` compatible.
 """
 
 from __future__ import annotations
 
+import math
 from dataclasses import dataclass
 from typing import NamedTuple
 
@@ -43,6 +47,7 @@ class EncoderConfig:
     mode: str = "poisson"  # one of {"poisson", "inhomogeneous", "gamma"}
     gamma_order: int = 4  # renewal order (shape); >= 1, integer
     max_rate_hz: float = 1000.0  # validity cap for r * dt <= 1 checks
+    refractory_s: float = 0.0  # absolute refractory period in seconds
     dtype: str = "float32"
 
     def __post_init__(self) -> None:
@@ -57,6 +62,11 @@ class EncoderConfig:
             )
         if not self.max_rate_hz > 0.0:
             raise ConfigurationError("max_rate_hz must be strictly positive.")
+        if not self.refractory_s >= 0.0 or not math.isfinite(self.refractory_s):
+            raise ConfigurationError(
+                "refractory_s must be finite and non-negative, got "
+                f"{self.refractory_s}."
+            )
         if self.dtype not in ("float32", "float64"):
             raise ConfigurationError(
                 f"dtype must be 'float32' or 'float64', got {self.dtype!r}."
@@ -128,8 +138,20 @@ class AfferentEncoder:
 
         new_key, subkey = jax.random.split(key)
         if c.mode in ("poisson", "inhomogeneous"):
-            spikes = jax.random.bernoulli(subkey, lam).astype(bool)
-            return new_key, state, EncoderOutput(spikes=spikes, rate=r)
+            if c.refractory_s <= 0.0:
+                spikes = jax.random.bernoulli(subkey, lam).astype(bool)
+                return new_key, state, EncoderOutput(spikes=spikes, rate=r)
+            available = state.residual <= 0.0
+            spikes = jax.random.bernoulli(subkey, lam) & available
+            remaining = jnp.maximum(state.residual - dt_val, 0.0)
+            new_residual = jnp.where(
+                spikes, jnp.asarray(c.refractory_s, dtype=dtype), remaining
+            )
+            return (
+                new_key,
+                EncoderState(residual=new_residual),
+                EncoderOutput(spikes=spikes, rate=r),
+            )
         # Gamma-renewal: countdown time-to-next-spike; on crossing, emit a
         # spike and draw Gamma(order, scale=1/(r*order)) ISI (mean 1/r).
         # Exact-zero residuals mark fresh/silent units: they draw an ISI
@@ -145,7 +167,11 @@ class AfferentEncoder:
             safe_rate * c.gamma_order
         )
         isi = isi.astype(dtype)
-        draw = jnp.where(active, isi, jnp.zeros(batch, dtype=dtype))
+        draw = jnp.where(
+            active,
+            jnp.maximum(isi, jnp.asarray(c.refractory_s, dtype=dtype)),
+            jnp.zeros(batch, dtype=dtype),
+        )
         new_residual = jnp.where(crossed | fresh, draw, jnp.maximum(waiting, 0.0))
         return (
             new_key,

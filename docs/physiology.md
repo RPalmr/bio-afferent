@@ -62,6 +62,10 @@ saturating, documented engineering combination of the reported properties.
 - Gamma-renewal (integer order n): exact ISI sampling
   `Gamma(shape=n, mean=1/r)` via time-to-next-spike residuals; more regular
   than Poisson (Fano factor < 1, tested).
+- Optional absolute refractory period (`EncoderConfig.refractory_s`) in all
+  modes: no spikes are emitted within the dead time after a spike. In
+  gamma-renewal mode the sampled ISI is clipped to at least the refractory
+  period; in Poisson modes a countdown suppresses Bernoulli draws.
 - Standard references: Dayan & Abbott (2001), *Theoretical Neuroscience*;
   Heeger (2000) on Poisson spike generation.
 

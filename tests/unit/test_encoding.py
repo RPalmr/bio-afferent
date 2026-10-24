@@ -5,7 +5,7 @@ import jax.numpy as jnp
 import pytest
 
 from bioafferent import AfferentEncoder, EncoderConfig
-from bioafferent.core.exceptions import InvalidStateError
+from bioafferent.core.exceptions import ConfigurationError, InvalidStateError
 
 
 @pytest.mark.parametrize("mode", ["poisson", "inhomogeneous", "gamma"])
@@ -116,3 +116,43 @@ def test_encoder_jit_vmap():
     keys = jax.random.split(jax.random.PRNGKey(0), 8)
     _, _, out = f(keys, jnp.full((8,), 30.0))
     assert out.spikes.shape == (8,)
+
+
+@pytest.mark.parametrize("mode", ["poisson", "gamma"])
+def test_refractory_prevents_close_spikes(mode):
+    refractory = 0.005
+    dt = 0.001
+    enc = AfferentEncoder(EncoderConfig(mode=mode, refractory_s=refractory))
+    key, st = jax.random.PRNGKey(0), enc.init_state(())
+    spike_times = []
+    for i in range(1000):
+        key, st, out = enc.step(key, st, 300.0, dt)
+        if bool(out.spikes):
+            spike_times.append(i * dt)
+    assert len(spike_times) > 5
+    gaps = jnp.diff(jnp.asarray(spike_times))
+    assert bool(jnp.all(gaps >= refractory - 1e-6))
+
+
+@pytest.mark.parametrize("mode", ["poisson", "gamma"])
+def test_zero_rate_with_refractory_stays_silent(mode):
+    enc = AfferentEncoder(EncoderConfig(mode=mode, refractory_s=0.005))
+    key, st = jax.random.PRNGKey(0), enc.init_state((4,))
+    for _ in range(20):
+        key, st, out = enc.step(key, st, jnp.zeros((4,)), 0.001)
+        assert not bool(out.spikes.any())
+
+
+@pytest.mark.parametrize("value", [-1e-3, float("nan"), float("inf")])
+def test_refractory_config_rejects_invalid(value):
+    with pytest.raises(ConfigurationError):
+        EncoderConfig(refractory_s=value)
+
+
+def test_refractory_encoder_jittable():
+    enc = AfferentEncoder(EncoderConfig(mode="poisson", refractory_s=0.002))
+    f = jax.jit(lambda k, s: enc.step(k, s, 80.0, 0.001))
+    key, st = jax.random.PRNGKey(0), enc.init_state((4,))
+    key, st, out = f(key, st)
+    assert out.spikes.shape == (4,)
+    assert st.residual.shape == (4,)

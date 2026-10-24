@@ -21,8 +21,8 @@ out.ia_rate, out.ii_rate, out.ib_rate  # Hz, one entry per muscle
 - Everything else defaults: no gamma drive, `dt=0.001` s, built-in
   parameters, no spike encoding. Override per call
   (`gamma_static=40.0`, `dt=0.02`) or at construction
-  (`encoder_config=EncoderConfig(mode="poisson")`, custom `SpindleConfig` /
-  `GTOConfig`, `seed=...`).
+  (`encoder_config=EncoderConfig(mode="poisson", refractory_s=0.002)`, custom
+  `SpindleConfig` / `GTOConfig`, `seed=...`).
 - `aff.reset()` returns states to rest; `aff.reseed(seed)` restarts the
   spike-encoding random stream. With `encoder_config` set, `out.spikes`
   holds one boolean per afferent (Ia, II, Ib concatenated).

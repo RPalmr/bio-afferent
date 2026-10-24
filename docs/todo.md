@@ -34,7 +34,9 @@ Post-0.1.0 implementation work, ordered by impact. `main` is ahead of the
 
 ## Encoding and decoding
 
-- [ ] Add absolute/relative refractory periods to `EncoderConfig`.
+- [x] Add an absolute refractory period to `EncoderConfig`.
+- [ ] Add a relative refractory option (reduced spike probability after the
+      absolute dead time).
 - [ ] Add spike-to-rate decoding and population/ensemble encoding helpers, with
       tests for ISI distributions and Fano factor.
 - [ ] Reduce gamma-renewal cost (0.63 ms per 1000 units in

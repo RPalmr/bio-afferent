@@ -92,8 +92,9 @@ class EncoderState:
     """State of one `AfferentEncoder` step.
 
     Attributes:
-        residual: time to next spike in seconds (gamma-renewal mode),
-            shape ``(...)``. Zeros for Poisson modes.
+        residual: time to next spike (gamma-renewal) or remaining absolute
+            refractory time (Poisson modes) in seconds, shape ``(...)``.
+            Zeros when no countdown is active.
     """
 
     residual: FloatArray
