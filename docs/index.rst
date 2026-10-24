@@ -65,6 +65,12 @@ step for 1000 environments x 20 muscles on CPU.
    api
    changelog
 
+.. toctree::
+   :maxdepth: 2
+   :caption: Development
+
+   todo
+
 Indices and tables
 ==================
 
