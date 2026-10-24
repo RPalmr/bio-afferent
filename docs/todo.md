@@ -12,8 +12,9 @@ Post-0.1.0 implementation work, ordered by impact. `main` is ahead of the
 - [x] Add a parameter provenance table mapping every `SpindleConfig` and
       `GTOConfig` field to a published source or an explicit engineering
       calibration choice. Link it from `docs/physiology.md`.
-- [ ] Add a calibration script that regenerates the figures in `docs/_static/`
-      and the numbers in `docs/performance.md` from the current defaults.
+- [x] Add a calibration script that regenerates the reference figures and
+      checks qualitative calibration targets (spindle overshoot, II following,
+      gamma effects, GTO monotonicity).
 - [ ] Implement muscle history / thixotropy effects (Blum et al. 2017) behind a
       config flag, with tests.
 
