@@ -48,7 +48,8 @@ jobs:
       - name: install with older JAX
         run: |
           pip install build
-          pip install ".[dev,gymnasium,mujoco,mjx]"
+          pip install "numpy<2"
+          pip install -e ".[dev,gymnasium,mujoco,mjx]"
           pip install "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
       - name: tests
         run: pytest tests/ -q --ignore=tests/performance
