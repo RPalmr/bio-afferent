@@ -40,7 +40,7 @@ pip install "bioafferent[mujoco]"      # MuJoCo / MJX adapters
 From source:
 
 ```bash
-git clone https://github.com/appliedCL/bioafferent.git
+git clone https://github.com/RPalmr/bio-afferent.git
 cd bioafferent
 pip install -e .
 ```
