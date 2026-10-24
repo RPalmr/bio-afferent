@@ -36,7 +36,9 @@ def check_spindle_targets():
     ia = np.array(ia)
     targets = {
         "ia_peak_above_hold_mean": bool(np.max(ia) > np.mean(ia[-n_hold:]) + 5.0),
-        "ii_follows_length": bool(np.mean(np.array(ii)[500:]) > np.mean(np.array(ii)[:500]) + 0.5),
+        "ii_follows_length": bool(
+            np.mean(np.array(ii)[500:]) > np.mean(np.array(ii)[:500]) + 0.5
+        ),
     }
     return targets
 

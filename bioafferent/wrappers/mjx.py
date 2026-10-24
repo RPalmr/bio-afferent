@@ -74,9 +74,7 @@ def mjx_rest_lengths(
     if ids.ndim != 1:
         raise ConfigurationError("actuator_ids must be 1-D.")
     if ids.size == 0 or int(ids.min()) < 0 or int(ids.max()) >= alen.shape[0]:
-        raise ConfigurationError(
-            f"actuator_ids out of range for nu={alen.shape[0]}."
-        )
+        raise ConfigurationError(f"actuator_ids out of range for nu={alen.shape[0]}.")
     return jnp.take(alen, ids, axis=0) * length_scale
 
 

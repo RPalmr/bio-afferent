@@ -48,7 +48,7 @@ Post-0.1.0 implementation work, ordered by impact. `main` is ahead of the
 
 - [x] Install `mujoco` in CI so the real adapter tests run.
 - [x] Add a Python 3.10-3.13 CI matrix.
-- [ ] Add a JAX-version CI matrix.
+- [x] Add a JAX-version CI matrix (0.4.20 regression job).
 - [x] Build the Sphinx docs in CI with warnings as errors.
 - [ ] Verify and publish the ReadTheDocs build.
 - [x] Add `bioafferent/py.typed`.
