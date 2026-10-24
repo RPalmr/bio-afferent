@@ -57,3 +57,20 @@ def test_real_mujoco_adaptive_responses():
     assert ia[w][vel[w] > 0].mean() > ia[w][vel[w] < 0].mean()
     # Ib should correlate positively with force
     assert np.corrcoef(ib[w], frc[w])[0, 1] > 0.5
+
+mjx = pytest.importorskip("mujoco.mjx", reason="mujoco-mjx missing")
+
+XML_REF = XML.replace('range="0 0.4"', 'range="0 0.4" ref="0.2"')
+
+def test_real_mjx_rest_lengths_and_normalized_length():
+    import mujoco.mjx as mjx
+    from bioafferent.wrappers.mjx import extract_mjx_mechanics, mjx_rest_lengths
+    model = mujoco.MjModel.from_xml_string(XML_REF)
+    mx = mjx.put_model(model)
+    rest = mjx_rest_lengths(mx, length_scale=1.0)
+    assert rest.shape == (1,)
+    assert float(rest[0]) == pytest.approx(0.2)
+    # At reference pose, normalized length is 1.0
+    data = mjx.forward(mx, mjx.make_data(mx))
+    mech = extract_mjx_mechanics(data, rest_lengths=rest, length_scale=1.0)
+    assert float(mech.length[0]) == pytest.approx(1.0)

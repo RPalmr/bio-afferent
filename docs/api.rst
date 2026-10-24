@@ -71,7 +71,7 @@ Wrappers
    :members: extract_mujoco_mechanics
 
 .. automodule:: bioafferent.wrappers.mjx
-   :members: extract_mjx_mechanics, mjx_afferent_step, default_mjx_models, MJXAfferents
+   :members: extract_mjx_mechanics, mjx_afferent_step, default_mjx_models, MJXAfferents, mjx_rest_lengths
 
 Exceptions
 ----------
