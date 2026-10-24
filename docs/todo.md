@@ -51,8 +51,7 @@ Post-0.1.0 implementation work, ordered by impact. `main` is ahead of the
 - [x] Build the Sphinx docs in CI with warnings as errors.
 - [ ] Verify and publish the ReadTheDocs build.
 - [x] Add `bioafferent/py.typed`.
-- [ ] Single-source the version: `pyproject.toml` duplicates
-      `bioafferent/_version.py`. Add a trusted-publishing release workflow and
-      bump to 0.1.1.
+- [x] Single-source the version, add a trusted-publishing release workflow,
+      and bump to 0.1.1.
 - [x] Document `MechanicalState`, `MechanicalAdapter`, and `MJXAfferents` in
       `docs/api.rst`.

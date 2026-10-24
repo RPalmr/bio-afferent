@@ -5,10 +5,12 @@ import sys
 
 sys.path.insert(0, os.path.abspath(".."))
 
+from bioafferent._version import __version__  # noqa: E402
+
 project = "Bioafferent"
 author = "Bioafferent Contributors"
-version = "0.1.0"
-release = "0.1.0"
+version = __version__
+release = __version__
 
 extensions = [
     "sphinx.ext.autodoc",
