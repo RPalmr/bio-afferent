@@ -59,18 +59,32 @@ New in this release:
 
 ## Quick start
 
-```python
-import jax.numpy as jnp
-from bioafferent import MuscleSpindle, SpindleConfig
+**General use:**
 
-spindle = MuscleSpindle(SpindleConfig())
-state = spindle.init_state(shape=())
-for _ in range(1000):
-    state, out = spindle.step(state, length=1.02, velocity=0.0, gamma_dynamic=0.3, gamma_static=0.2, dt=0.001)
-print(float(out.ia_rate), float(out.ii_rate))
+```python
+from bioafferent import MuscleSpindle, SpindleConfig
+sp = MuscleSpindle(SpindleConfig())
+st = sp.init_state(shape=())
+st, out = sp.step(st, length=1.02, velocity=0.0)
+print(out.ia_rate, out.ii_rate)
 ```
 
-Prefer fewer moving parts? `Afferents(n_muscles=2).step(length, velocity,
-force)` hides states and defaults the rest; `wrap(gym.make("CartPole-v1"))`
-does the same for Gymnasium envs. See `examples/`, `docs/usage.md`, and
-`docs/` for details.
+**MuJoCo adapter:**
+
+```python
+import mujoco
+from bioafferent.wrappers.mujoco import extract_mujoco_mechanics
+mech = extract_mujoco_mechanics(data, rest_lengths=[0.2]*data.model.nu)
+```
+
+**Gymnasium wrapper:**
+
+```python
+import gymnasium as gym
+from bioafferent import wrap
+env = wrap(gym.make("CartPole-v1"))
+obs, _ = env.reset()
+print(obs.keys())  # includes ia_rate, ii_rate, ib_rate
+```
+
+See `examples/`, `docs/usage.md`, and `docs/` for details.
