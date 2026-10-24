@@ -57,11 +57,14 @@ Wrappers
 .. autoclass:: bioafferent.AfferentWrapper
    :members: reset, step
 
+.. automodule:: bioafferent.wrappers.base
+   :members: MechanicalState, MechanicalAdapter
+
 .. automodule:: bioafferent.wrappers.mujoco
    :members: extract_mujoco_mechanics
 
 .. automodule:: bioafferent.wrappers.mjx
-   :members: extract_mjx_mechanics, mjx_afferent_step, default_mjx_models
+   :members: extract_mjx_mechanics, mjx_afferent_step, default_mjx_models, MJXAfferents
 
 Exceptions
 ----------

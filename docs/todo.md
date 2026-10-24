@@ -53,5 +53,5 @@ Post-0.1.0 implementation work, ordered by impact. `main` is ahead of the
 - [ ] Single-source the version: `pyproject.toml` duplicates
       `bioafferent/_version.py`. Add a trusted-publishing release workflow and
       bump to 0.1.1.
-- [ ] Document `MechanicalState`, `MechanicalAdapter`, and `MJXAfferents` in
+- [x] Document `MechanicalState`, `MechanicalAdapter`, and `MJXAfferents` in
       `docs/api.rst`.
