@@ -6,9 +6,10 @@ and feeds them into pure-JAX spindle/GTO models.
 
 Requires: `pip install "bioafferent[mujoco]"`
 """
+
+import jax.numpy as jnp
 import mujoco
 import numpy as np
-import jax.numpy as jnp
 
 from bioafferent import Afferents, EncoderConfig
 from bioafferent.wrappers.mujoco import extract_mujoco_mechanics

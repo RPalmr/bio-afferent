@@ -6,8 +6,8 @@ import mujoco
 import mujoco.viewer
 import numpy as np
 
-from bioafferent.wrappers.mujoco import extract_mujoco_mechanics
 from bioafferent.wrappers.mjx import default_mjx_models, mjx_afferent_step
+from bioafferent.wrappers.mujoco import extract_mujoco_mechanics
 
 XML = r"""
 <mujoco>
@@ -35,6 +35,7 @@ def main(duration_sec=5.0):
     data = mujoco.MjData(model)
     data.qpos[0] = 0.2  # slide joint initial rest length
 
+
 if __name__ == "__main__":
     # Simpler direct interactive demo using the working model
     model = mujoco.MjModel.from_xml_string(XML)
@@ -55,7 +56,16 @@ if __name__ == "__main__":
             mech = extract_mujoco_mechanics(data, rest_lengths=[0.2])
             ss, gs, aff = mjx_afferent_step(ss, gs, mech, spindle, gto, 40.0, 30.0)
             if int((time.time() - start) * 1000) % 500 == 0:
-                print(f"t={(time.time()-start):.2f}s len={float(mech.length[0]):.3f} vel={float(mech.velocity[0]):.3f} force={float(mech.force[0]):.1f} | Ia={float(aff.ia_rate[0]):.1f} Hz II={float(aff.ii_rate[0]):.1f} Hz Ib={float(aff.ib_rate[0]):.1f} Hz")
+                elapsed = time.time() - start
+                print(
+                    f"t={elapsed:.2f}s "
+                    f"len={float(mech.length[0]):.3f} "
+                    f"vel={float(mech.velocity[0]):.3f} "
+                    f"force={float(mech.force[0]):.1f} | "
+                    f"Ia={float(aff.ia_rate[0]):.1f} Hz "
+                    f"II={float(aff.ii_rate[0]):.1f} Hz "
+                    f"Ib={float(aff.ib_rate[0]):.1f} Hz"
+                )
 
             # Slow real-time rate
             time.sleep(0.001)

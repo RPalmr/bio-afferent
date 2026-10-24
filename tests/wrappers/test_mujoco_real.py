@@ -3,8 +3,8 @@
 import numpy as np
 import pytest
 
-from bioafferent.wrappers.mujoco import extract_mujoco_mechanics
 from bioafferent.wrappers.mjx import default_mjx_models, mjx_afferent_step
+from bioafferent.wrappers.mujoco import extract_mujoco_mechanics
 
 mujoco = pytest.importorskip("mujoco", reason="mujo missing")
 
