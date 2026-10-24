@@ -35,6 +35,9 @@ Repository = "https://github.com/RPalmr/bio-afferent"
 where = ["."]
 include = ["bioafferent*"]
 
+[tool.setuptools.package-data]
+bioafferent = ["py.typed"]
+
 [tool.ruff]
 line-length = 88
 target-version = "py310"
