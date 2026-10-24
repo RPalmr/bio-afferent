@@ -34,7 +34,8 @@ With simulator integrations:
 
 ```bash
 pip install "bioafferent[gymnasium]"   # Gymnasium wrapper
-pip install "bioafferent[mujoco]"      # MuJoCo / MJX adapters
+pip install "bioafferent[mujoco]"      # MuJoCo adapter
+pip install "bioafferent[mjx]"         # MuJoCo MJX adapter
 ```
 
 From source:

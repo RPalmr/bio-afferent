@@ -30,7 +30,7 @@ from bioafferent.wrappers.base import MechanicalState
 
 try:
     import mujoco.mjx as _mjx  # type: ignore[import-not-found]
-except ImportError:  # pragma: no cover - mujoco is an optional dependency
+except ImportError:  # pragma: no cover - mujoco-mjx is an optional dependency
     _mjx = None  # type: ignore[assignment]
 
 

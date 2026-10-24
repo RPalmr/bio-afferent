@@ -1,8 +1,8 @@
 # Usage
 
 Install first (`pip install bioafferent`, plus `bioafferent[gymnasium]` /
-`bioafferent[mujoco]` extras for simulator integrations). Then start simple;
-add detail only when you need it.
+`bioafferent[mujoco]` / `bioafferent[mjx]` extras for simulator integrations).
+Then start simple; add detail only when you need it.
 
 ## The facade (recommended)
 

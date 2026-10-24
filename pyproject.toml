@@ -26,6 +26,7 @@ dependencies = [
 [project.optional-dependencies]
 gymnasium = ["gymnasium>=0.29"]
 mujoco = ["mujoco>=3.0"]
+mjx = ["mujoco>=3.0", "mujoco-mjx>=3.0"]
 dev = ["pytest>=7", "ruff>=0.1", "mypy>=1.0"]
 
 [project.urls]
