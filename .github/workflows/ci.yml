@@ -15,7 +15,7 @@ jobs:
           python-version: "3.11"
       - name: install
         run: |
-          pip install -e .[dev] gymnasium
+          pip install -e ".[dev,gymnasium,mujoco]"
       - name: lint
         run: ruff check .
       - name: format
