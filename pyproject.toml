@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "bioafferent"
-version = "0.1.0"
+dynamic = ["version"]
 description = "JAX-based proprioceptive sensory feedback: muscle spindle (Ia/II) and Golgi tendon organ (Ib) models with spike encoding"
 readme = "README.md"
 license = { text = "MIT" }
@@ -34,6 +34,9 @@ Repository = "https://github.com/RPalmr/bio-afferent"
 [tool.setuptools.packages.find]
 where = ["."]
 include = ["bioafferent*"]
+
+[tool.setuptools.dynamic]
+version = {attr = "bioafferent._version.__version__"}
 
 [tool.setuptools.package-data]
 bioafferent = ["py.typed"]
