@@ -74,7 +74,13 @@ print(out.ia_rate, out.ii_rate)
 ```python
 import mujoco
 from bioafferent.wrappers.mujoco import extract_mujoco_mechanics
-mech = extract_mujoco_mechanics(data, rest_lengths=[0.2]*data.model.nu)
+model = mujoco.MjModel.from_xml_path(
+    mujoco.__file__.replace("__init__.py", "testdata/model.xml")
+)
+data = mujoco.MjData(model)
+mech = extract_mujoco_mechanics(
+    data, rest_lengths=[0.2] * max(1, getattr(model, "nu", 1))
+)
 ```
 
 **Gymnasium wrapper:**
