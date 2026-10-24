@@ -52,12 +52,8 @@ class SpindleState:
     def replace(self, **kwargs: Array) -> SpindleState:
         return SpindleState(
             tension=kwargs.get("tension", self.tension),
-            activation_dynamic=kwargs.get(
-                "activation_dynamic", self.activation_dynamic
-            ),
-            activation_static=kwargs.get(
-                "activation_static", self.activation_static
-            ),
+            activation_dynamic=kwargs.get("activation_dynamic", self.activation_dynamic),
+            activation_static=kwargs.get("activation_static", self.activation_static),
             history=kwargs.get("history", self.history),
         )
 
@@ -97,9 +93,7 @@ class GTOState:
         self.force_filtered = force_filtered
 
     def replace(self, **kwargs: Array) -> GTOState:
-        return GTOState(
-            force_filtered=kwargs.get("force_filtered", self.force_filtered)
-        )
+        return GTOState(force_filtered=kwargs.get("force_filtered", self.force_filtered))
 
     def tree_flatten(self) -> tuple[tuple[Array, ...], None]:
         return ((self.force_filtered,), None)

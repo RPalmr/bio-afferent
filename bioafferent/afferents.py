@@ -67,9 +67,7 @@ class Afferents:
         n = (self.n_muscles,)
         self._spindle_state: SpindleState = self.spindle.init_state(n)
         self._gto_state: GTOState = self.gto.init_state(n)
-        self._enc_state: EncoderState | None = (
-            self.encoder.init_state((3 * self.n_muscles,)) if self.encoder else None
-        )
+        self._enc_state: EncoderState | None = self.encoder.init_state((3 * self.n_muscles,)) if self.encoder else None
 
     def reseed(self, seed: int) -> None:
         """Restart the spike-encoding random stream from ``seed``."""
@@ -102,9 +100,7 @@ class Afferents:
         spikes: jax.Array | None = None
         if self.encoder is not None and self._enc_state is not None:
             rates = jnp.concatenate([sp.ia_rate, sp.ii_rate, go.ib_rate])
-            self._key, self._enc_state, enc = self.encoder.step(
-                self._key, self._enc_state, rates, dt
-            )
+            self._key, self._enc_state, enc = self.encoder.step(self._key, self._enc_state, rates, dt)
             spikes = enc.spikes
         return AfferentRates(
             ia_rate=sp.ia_rate,
@@ -136,10 +132,7 @@ class Afferents:
         """
         L = jnp.asarray(length)
         if L.ndim == 0:
-            raise ShapeError(
-                "length must have a leading time axis, e.g. shape (time,) or "
-                "(time, n_muscles)."
-            )
+            raise ShapeError("length must have a leading time axis, e.g. shape (time,) or (time, n_muscles).")
 
         def sequence(name: str, value: object) -> jax.Array:
             arr = jnp.asarray(value)
@@ -147,15 +140,13 @@ class Afferents:
                 return jnp.broadcast_to(arr, L.shape)
             if arr.shape[0] != L.shape[0]:
                 raise ShapeError(
-                    f"{name} leading axis ({arr.shape[0]}) must match the time "
-                    f"axis of length ({L.shape[0]})."
+                    f"{name} leading axis ({arr.shape[0]}) must match the time axis of length ({L.shape[0]})."
                 )
             try:
                 jnp.broadcast_shapes(arr.shape[1:], L.shape[1:])
             except ValueError as exc:
                 raise ShapeError(
-                    f"{name} with shape {tuple(arr.shape)} is not "
-                    f"broadcast-compatible with length {tuple(L.shape)}."
+                    f"{name} with shape {tuple(arr.shape)} is not broadcast-compatible with length {tuple(L.shape)}."
                 ) from exc
             return arr
 

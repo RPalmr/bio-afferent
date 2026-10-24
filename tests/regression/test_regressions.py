@@ -44,7 +44,5 @@ def test_r3_gamma_silent_and_fresh():
         key, st, out = enc.step(key, st, jnp.zeros((8,)), 0.001)
         assert not bool(out.spikes.any())
         assert bool(jnp.all(st.residual == 0.0))
-    _, _, out = enc.step(
-        jax.random.PRNGKey(1), enc.init_state((8,)), jnp.full((8,), 80.0), 0.001
-    )
+    _, _, out = enc.step(jax.random.PRNGKey(1), enc.init_state((8,)), jnp.full((8,), 80.0), 0.001)
     assert not bool(out.spikes.any())

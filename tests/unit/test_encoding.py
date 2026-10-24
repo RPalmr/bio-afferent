@@ -87,9 +87,7 @@ def test_zero_rate_never_spikes():
 
 def test_gamma_no_spurious_first_spike():
     enc = AfferentEncoder(EncoderConfig(mode="gamma"))
-    _, _, out = enc.step(
-        jax.random.PRNGKey(0), enc.init_state((16,)), jnp.full((16,), 80.0), 0.001
-    )
+    _, _, out = enc.step(jax.random.PRNGKey(0), enc.init_state((16,)), jnp.full((16,), 80.0), 0.001)
     assert not bool(out.spikes.any())
 
 

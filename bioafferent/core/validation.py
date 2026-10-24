@@ -29,8 +29,7 @@ def check_finite(name: str, value: Array) -> Array:
     bad = jnp.logical_not(jnp.all(jnp.isfinite(value)))
     if bool(jax.device_get(bad)):
         raise ValueError(
-            f"{name} must be finite, got non-finite values. "
-            f"Check upstream mechanics/extraction for NaN or inf."
+            f"{name} must be finite, got non-finite values. Check upstream mechanics/extraction for NaN or inf."
         )
     return value
 

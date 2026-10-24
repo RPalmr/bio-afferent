@@ -39,14 +39,10 @@ class IntegrationConfig:
 
     def __post_init__(self) -> None:
         if not self.dt > 0.0:
-            raise ConfigurationError(
-                f"dt must be strictly positive, got {self.dt}. "
-                "Use e.g. dt=0.001 (1 ms)."
-            )
+            raise ConfigurationError(f"dt must be strictly positive, got {self.dt}. Use e.g. dt=0.001 (1 ms).")
         if self.method not in ("euler", "rk2", "exponential"):
             raise ConfigurationError(
-                f"Unknown integration method {self.method!r}. "
-                "Choose from 'euler', 'rk2', 'exponential'."
+                f"Unknown integration method {self.method!r}. Choose from 'euler', 'rk2', 'exponential'."
             )
 
 
@@ -65,9 +61,7 @@ def rk2_step(rhs_fn: RhsFn, state: Array, dt: float) -> Array:
     return state + dt * k2
 
 
-def exponential_step(
-    rhs_fn: Callable[[Array], tuple[Array, Array]], state: Array, dt: float
-) -> Array:
+def exponential_step(rhs_fn: Callable[[Array], tuple[Array, Array]], state: Array, dt: float) -> Array:
     """Exponential-Euler for relaxational dynamics ``dx/dt = (target - x)/tau``.
 
     The ``rhs_fn`` must return the tuple ``(target, tau)`` with shapes matching
@@ -83,9 +77,7 @@ def exponential_step(
     return state + (target - state) * alpha
 
 
-def integrate(
-    rhs_fn: Callable[[Array], Any], state: Array, dt: float, method: str
-) -> Array:
+def integrate(rhs_fn: Callable[[Array], Any], state: Array, dt: float, method: str) -> Array:
     """Dispatch to the selected explicit integrator."""
     if method == "euler":
         return euler_step(rhs_fn, state, dt)
@@ -93,10 +85,7 @@ def integrate(
         return rk2_step(rhs_fn, state, dt)
     if method == "exponential":
         return exponential_step(rhs_fn, state, dt)
-    raise ConfigurationError(
-        f"Unknown integration method {method!r}. "
-        "Choose from 'euler', 'rk2', 'exponential'."
-    )
+    raise ConfigurationError(f"Unknown integration method {method!r}. Choose from 'euler', 'rk2', 'exponential'.")
 
 
 def check_stability(value: Array, context: str) -> Array:
@@ -109,7 +98,6 @@ def check_stability(value: Array, context: str) -> Array:
     bad = jnp.logical_not(jnp.all(jnp.isfinite(value)))
     if bool(jax.device_get(bad)):
         raise NumericalStabilityError(
-            f"Non-finite values detected {context}. "
-            "Reduce dt, check input ranges, or file a regression test."
+            f"Non-finite values detected {context}. Reduce dt, check input ranges, or file a regression test."
         )
     return value

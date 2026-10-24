@@ -10,9 +10,7 @@ from bioafferent.wrappers.mjx import default_mjx_models, mjx_afferent_step
 
 def run_case(batch: int, muscles: int) -> None:
     spindle, gto = default_mjx_models()
-    f = jax.jit(
-        lambda ss, gs, m: mjx_afferent_step(ss, gs, m, spindle, gto, 40.0, 30.0)
-    )
+    f = jax.jit(lambda ss, gs, m: mjx_afferent_step(ss, gs, m, spindle, gto, 40.0, 30.0))
     mech = MechanicalState(
         length=jnp.full((batch, muscles), 1.02),
         velocity=jnp.full((batch, muscles), 0.03),

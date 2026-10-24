@@ -32,16 +32,12 @@ class GTOConfig:
 
     def __post_init__(self) -> None:
         if self.dtype not in ("float32", "float64"):
-            raise ConfigurationError(
-                f"dtype must be 'float32' or 'float64', got {self.dtype!r}."
-            )
+            raise ConfigurationError(f"dtype must be 'float32' or 'float64', got {self.dtype!r}.")
         if self.integrator not in ("euler", "rk2", "exponential"):
             raise ConfigurationError(f"Unknown integrator {self.integrator!r}.")
         for name in ("tau_force", "saturation_force", "max_rate"):
             if getattr(self, name) <= 0.0:
-                raise ConfigurationError(
-                    f"{name} must be strictly positive, got {getattr(self, name)}."
-                )
+                raise ConfigurationError(f"{name} must be strictly positive, got {getattr(self, name)}.")
         if self.threshold < 0.0:
             raise ConfigurationError("threshold must be non-negative.")
         if self.gain < 0.0:

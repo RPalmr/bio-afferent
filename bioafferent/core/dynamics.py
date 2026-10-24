@@ -53,9 +53,7 @@ def first_order_targets(
     - ``tau = tau0 / (1 + c_tau * a)``: fusimotor drive stiffens the fiber and
       therefore shortens its mechanical lag.
     """
-    stretch = jnp.maximum(
-        length[..., None] - length_threshold + prestretch_gain * activation, 0.0
-    )
+    stretch = jnp.maximum(length[..., None] - length_threshold + prestretch_gain * activation, 0.0)
     stiff = stiffness_rest * (1.0 + stiffness_gain * activation)
     damp = damping_rest * (1.0 + damping_gain * activation)
     tau = tau_rest / (1.0 + tau_gain * activation)

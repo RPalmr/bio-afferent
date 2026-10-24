@@ -22,26 +22,15 @@ def test_spindle_vmap_matches_scalar(spindle):
     V = jnp.array([0.0, 0.01, 0.05, -0.02])
     batched_st, batched_out = spindle.step(spindle.init_state((4,)), L, V, 40.0, 30.0)
     singles = [
-        spindle.step(spindle.init_state(()), float(li), float(vi), 40.0, 30.0)
-        for li, vi in zip(L, V, strict=True)
+        spindle.step(spindle.init_state(()), float(li), float(vi), 40.0, 30.0) for li, vi in zip(L, V, strict=True)
     ]
-    assert bool(
-        jnp.allclose(
-            batched_out.ia_rate, jnp.array([o.ia_rate for _, o in singles]), atol=1e-6
-        )
-    )
-    assert bool(
-        jnp.allclose(
-            batched_out.ii_rate, jnp.array([o.ii_rate for _, o in singles]), atol=1e-6
-        )
-    )
+    assert bool(jnp.allclose(batched_out.ia_rate, jnp.array([o.ia_rate for _, o in singles]), atol=1e-6))
+    assert bool(jnp.allclose(batched_out.ii_rate, jnp.array([o.ii_rate for _, o in singles]), atol=1e-6))
 
 
 def test_spindle_scan_rollout_matches_loop(spindle):
     length, velocity = ramp_and_hold(n_base=50, n_ramp=100, n_hold=50)
-    final, stacked = spindle.rollout(
-        spindle.init_state(()), length, velocity, 40.0, 30.0, 0.001
-    )
+    final, stacked = spindle.rollout(spindle.init_state(()), length, velocity, 40.0, 30.0, 0.001)
     assert stacked.ia_rate.shape == length.shape
     st = spindle.init_state(())
     for L, V in zip(length, velocity, strict=True):
@@ -60,9 +49,7 @@ def test_scan_is_jittable(spindle):
 
 def test_batch_env_x_muscle(spindle):
     st = spindle.init_state((8, 6))  # 8 envs x 6 muscles
-    st2, out = spindle.step(
-        st, jnp.full((8, 6), 1.02), jnp.full((8, 6), 0.03), 50.0, 25.0
-    )
+    st2, out = spindle.step(st, jnp.full((8, 6), 1.02), jnp.full((8, 6), 0.03), 50.0, 25.0)
     assert out.ia_rate.shape == (8, 6)
     assert bool(jnp.isfinite(out.ia_rate).all())
 
@@ -87,8 +74,6 @@ def test_encoder_scan_over_rates():
         key, st, out = enc.step(key, st, r, 0.001)
         return (key, st), out.spikes
 
-    (_, _), spikes = jax.lax.scan(
-        body, (jax.random.PRNGKey(0), enc.init_state(())), rates
-    )
+    (_, _), spikes = jax.lax.scan(body, (jax.random.PRNGKey(0), enc.init_state(())), rates)
     assert spikes.shape == (200,)
     assert int(spikes[100:].sum()) > int(spikes[:100].sum())

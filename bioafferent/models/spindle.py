@@ -71,15 +71,12 @@ class MuscleSpindle:
         tension = jnp.zeros(shape + (3,), dtype=self.dtype)
         act = jnp.zeros(shape, dtype=self.dtype)
         hist = jnp.zeros(shape, dtype=self.dtype)
-        return SpindleState(
-            tension=tension, activation_dynamic=act, activation_static=act, history=hist
-        )
+        return SpindleState(tension=tension, activation_dynamic=act, activation_static=act, history=hist)
 
     def _check_state(self, state: SpindleState) -> tuple[int, ...]:
         if not isinstance(state, SpindleState):
             raise InvalidStateError(
-                f"Expected SpindleState, got {type(state).__name__}. "
-                "Build it with spindle.init_state(shape)."
+                f"Expected SpindleState, got {type(state).__name__}. Build it with spindle.init_state(shape)."
             )
         if state.tension.shape[-1:] != (3,):
             raise InvalidStateError(
@@ -87,10 +84,7 @@ class MuscleSpindle:
                 f"got shape {tuple(state.tension.shape)}."
             )
         batch = tuple(state.tension.shape[:-1])
-        if (
-            tuple(state.activation_dynamic.shape) != batch
-            or tuple(state.activation_static.shape) != batch
-        ):
+        if tuple(state.activation_dynamic.shape) != batch or tuple(state.activation_static.shape) != batch:
             raise InvalidStateError(
                 "SpindleState activation shapes "
                 f"{tuple(state.activation_dynamic.shape)}/"
@@ -127,9 +121,7 @@ class MuscleSpindle:
         c = self.config
         dt_val = 0.001 if dt is None else float(dt)
         if not dt_val > 0.0:
-            raise InvalidStateError(
-                f"dt must be strictly positive, got {dt_val}. Use e.g. dt=0.001."
-            )
+            raise InvalidStateError(f"dt must be strictly positive, got {dt_val}. Use e.g. dt=0.001.")
         batch = self._check_state(state)
         L = as_array(length, "length", self.dtype)
         V = as_array(velocity, "velocity", self.dtype)
@@ -204,17 +196,11 @@ class MuscleSpindle:
         # change rate with exponential filter; scale dynamics by history.
         if c.enable_thixotropy:
             # Compute tension change rate as proxy for mechanical history
-            tension_change = (
-                jnp.sum(tension - state.tension, axis=-1)
-                / jnp.maximum(dt_val, 1e-9)
-            )
+            tension_change = jnp.sum(tension - state.tension, axis=-1) / jnp.maximum(dt_val, 1e-9)
             alpha_hist = 1.0 - jnp.exp(-dt_val / c.thixotropy_tau)
             new_history = state.history + (tension_change - state.history) * alpha_hist
             # Apply thixotropic scaling: history-dependent offset
-            tension = tension + (
-                c.thixotropy_scale * new_history
-                * jnp.ones(tension.shape[-1:], dtype=tension.dtype)
-            )
+            tension = tension + (c.thixotropy_scale * new_history * jnp.ones(tension.shape[-1:], dtype=tension.dtype))
         else:
             new_history = state.history
 
@@ -257,9 +243,7 @@ class MuscleSpindle:
         outputs (each leaf gains a leading time axis).
         """
 
-        def _body(
-            s: SpindleState, inputs: tuple[jax.Array, ...]
-        ) -> tuple[SpindleState, SpindleOutput]:
+        def _body(s: SpindleState, inputs: tuple[jax.Array, ...]) -> tuple[SpindleState, SpindleOutput]:
             L, V, gd, gs = inputs
             return self.step(s, L, V, gd, gs, dt)
 

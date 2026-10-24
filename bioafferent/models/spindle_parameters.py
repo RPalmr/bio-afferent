@@ -28,9 +28,7 @@ FIBER_NAMES = ("bag1", "bag2", "chain")
 def _triplet(values: tuple[float, float, float], name: str) -> np.ndarray:
     arr = np.asarray(values, dtype=np.float64)
     if arr.shape != (3,) or not np.all(np.isfinite(arr)):
-        raise ParameterError(
-            f"{name} must be 3 finite values (bag1, bag2, chain), got {values}."
-        )
+        raise ParameterError(f"{name} must be 3 finite values (bag1, bag2, chain), got {values}.")
     return arr
 
 
@@ -89,17 +87,14 @@ class SpindleConfig:
 
     def __post_init__(self) -> None:
         if self.dtype not in ("float32", "float64"):
-            raise ConfigurationError(
-                f"dtype must be 'float32' or 'float64', got {self.dtype!r}."
-            )
+            raise ConfigurationError(f"dtype must be 'float32' or 'float64', got {self.dtype!r}.")
         if not self.thixotropy_tau > 0.0:
             raise ConfigurationError("thixotropy_tau must be strictly positive.")
         if not self.thixotropy_scale >= 0.0:
             raise ConfigurationError("thixotropy_scale must be non-negative.")
         if self.integrator not in ("euler", "rk2", "exponential"):
             raise ConfigurationError(
-                f"Unknown integrator {self.integrator!r}. "
-                "Choose 'euler', 'rk2', or 'exponential'."
+                f"Unknown integrator {self.integrator!r}. Choose 'euler', 'rk2', or 'exponential'."
             )
         for name in (
             "hill_half_rate_dynamic",
@@ -109,9 +104,7 @@ class SpindleConfig:
             "max_rate",
         ):
             if getattr(self, name) <= 0.0:
-                raise ConfigurationError(
-                    f"{name} must be strictly positive, got {getattr(self, name)}."
-                )
+                raise ConfigurationError(f"{name} must be strictly positive, got {getattr(self, name)}.")
         if not self.hill_exponent > 0.0:
             raise ConfigurationError("hill_exponent must be positive.")
         if not 0.0 <= self.chain_static_scale <= 1.0:

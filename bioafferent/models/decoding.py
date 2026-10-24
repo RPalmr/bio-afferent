@@ -35,10 +35,7 @@ def decode_rates(
         raise ConfigurationError(f"window_s must be strictly positive, got {window_s}.")
     arr = jnp.asarray(spikes)
     if arr.ndim == 0:
-        raise ShapeError(
-            "spikes must have a leading time axis, e.g. shape (time,) or "
-            "(time, n_units)."
-        )
+        raise ShapeError("spikes must have a leading time axis, e.g. shape (time,) or (time, n_units).")
     window = max(1, int(round(window_s / dt)))
     dtype = jnp.result_type(arr, 1.0)
     counts_in = (arr != 0).astype(dtype)

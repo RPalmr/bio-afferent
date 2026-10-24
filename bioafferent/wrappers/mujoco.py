@@ -49,8 +49,7 @@ def extract_mujoco_mechanics(
     """
     if mujoco is None:
         raise UnsupportedBackendError(
-            "mujoco is not installed. Install the 'mujoco' extra: "
-            "pip install bioafferent[mujoco]."
+            "mujoco is not installed. Install the 'mujoco' extra: pip install bioafferent[mujoco]."
         )
     try:
         alen = np.asarray(data.actuator_length)
@@ -58,29 +57,16 @@ def extract_mujoco_mechanics(
         afor = np.asarray(data.actuator_force)
     except AttributeError as exc:
         raise UnsupportedBackendError(
-            "MuJoCo data lacks actuator_length/_velocity/_force arrays; "
-            "this model structure is unsupported."
+            "MuJoCo data lacks actuator_length/_velocity/_force arrays; this model structure is unsupported."
         ) from exc
     if alen.ndim != 1 or avel.shape != alen.shape or afor.shape != alen.shape:
-        raise UnsupportedBackendError(
-            "Unexpected MuJoCo actuator array shapes; unsupported configuration."
-        )
-    ids = (
-        np.arange(alen.shape[0])
-        if actuator_ids is None
-        else np.asarray(actuator_ids, dtype=int)
-    )
+        raise UnsupportedBackendError("Unexpected MuJoCo actuator array shapes; unsupported configuration.")
+    ids = np.arange(alen.shape[0]) if actuator_ids is None else np.asarray(actuator_ids, dtype=int)
     if ids.size == 0 or int(ids.max()) >= alen.shape[0] or int(ids.min()) < 0:
         raise ConfigurationError(f"actuator_ids out of range for nu={alen.shape[0]}.")
-    rest = (
-        alen[ids].astype(float)
-        if rest_lengths is None
-        else np.asarray(rest_lengths, dtype=float)
-    )
+    rest = alen[ids].astype(float) if rest_lengths is None else np.asarray(rest_lengths, dtype=float)
     if rest.shape != ids.shape or bool(np.any(rest <= 0.0)):
-        raise ConfigurationError(
-            "rest_lengths must be positive with one entry per muscle."
-        )
+        raise ConfigurationError("rest_lengths must be positive with one entry per muscle.")
     if min(length_scale, velocity_scale, force_scale) <= 0.0:
         raise ConfigurationError("scale factors must be positive.")
     return MechanicalState(

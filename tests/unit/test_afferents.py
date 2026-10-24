@@ -56,10 +56,7 @@ def test_facade_rollout_matches_step():
     out = rolled.rollout(length, velocity, force, gamma_dynamic=40.0, gamma_static=30.0)
 
     stepped = Afferents(2)
-    manual = [
-        stepped.step(length[t], velocity[t], force[t], 40.0, 30.0)
-        for t in range(n_steps)
-    ]
+    manual = [stepped.step(length[t], velocity[t], force[t], 40.0, 30.0) for t in range(n_steps)]
     for field in ("ia_rate", "ii_rate", "ib_rate"):
         expected = jnp.stack([getattr(o, field) for o in manual])
         assert bool(jnp.allclose(getattr(out, field), expected, atol=1e-6))

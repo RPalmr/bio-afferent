@@ -60,40 +60,24 @@ class EncoderConfig:
     def __post_init__(self) -> None:
         if self.mode not in ("poisson", "inhomogeneous", "gamma"):
             raise ConfigurationError(
-                f"Unknown encoder mode {self.mode!r}. "
-                "Choose 'poisson', 'inhomogeneous', or 'gamma'."
+                f"Unknown encoder mode {self.mode!r}. Choose 'poisson', 'inhomogeneous', or 'gamma'."
             )
         if not isinstance(self.gamma_order, int) or self.gamma_order < 1:
-            raise ConfigurationError(
-                f"gamma_order must be a positive integer, got {self.gamma_order}."
-            )
+            raise ConfigurationError(f"gamma_order must be a positive integer, got {self.gamma_order}.")
         if not self.max_rate_hz > 0.0:
             raise ConfigurationError("max_rate_hz must be strictly positive.")
         if not self.refractory_s >= 0.0 or not math.isfinite(self.refractory_s):
+            raise ConfigurationError(f"refractory_s must be finite and non-negative, got {self.refractory_s}.")
+        if not self.relative_refractory_s >= 0.0 or not math.isfinite(self.relative_refractory_s):
             raise ConfigurationError(
-                "refractory_s must be finite and non-negative, got "
-                f"{self.refractory_s}."
+                f"relative_refractory_s must be finite and non-negative, got {self.relative_refractory_s}."
             )
-        if (
-            not self.relative_refractory_s >= 0.0
-            or not math.isfinite(self.relative_refractory_s)
-        ):
+        if not (0.0 <= self.relative_refractory_factor <= 1.0) or not math.isfinite(self.relative_refractory_factor):
             raise ConfigurationError(
-                "relative_refractory_s must be finite and non-negative, got "
-                f"{self.relative_refractory_s}."
-            )
-        if (
-            not (0.0 <= self.relative_refractory_factor <= 1.0)
-            or not math.isfinite(self.relative_refractory_factor)
-        ):
-            raise ConfigurationError(
-                "relative_refractory_factor must be in [0, 1], got "
-                f"{self.relative_refractory_factor}."
+                f"relative_refractory_factor must be in [0, 1], got {self.relative_refractory_factor}."
             )
         if self.dtype not in ("float32", "float64"):
-            raise ConfigurationError(
-                f"dtype must be 'float32' or 'float64', got {self.dtype!r}."
-            )
+            raise ConfigurationError(f"dtype must be 'float32' or 'float64', got {self.dtype!r}.")
 
 
 class EncoderOutput(NamedTuple):
@@ -141,9 +125,7 @@ class AfferentEncoder:
         if not dt_val > 0.0:
             raise InvalidStateError(f"dt must be strictly positive, got {dt_val}.")
         if not isinstance(state, EncoderState):
-            raise InvalidStateError(
-                f"Expected EncoderState, got {type(state).__name__}."
-            )
+            raise InvalidStateError(f"Expected EncoderState, got {type(state).__name__}.")
         batch = tuple(state.residual.shape)
         dtype = state.residual.dtype
         r = as_array(rate, "rate", dtype)
@@ -216,16 +198,10 @@ class AfferentEncoder:
         emission_factor = jnp.where(in_rel_gamma, c.relative_refractory_factor, 1.0)
         allowed_gamma = crossed_gamma & active_gamma & (~fresh_gamma)
         suppress_key, subkey_gamma = jax.random.split(subkey)
-        suppress_gamma = (
-            jax.random.bernoulli(suppress_key, emission_factor)
-            .astype(bool)
-        )
+        suppress_gamma = jax.random.bernoulli(suppress_key, emission_factor).astype(bool)
         fired_gamma = allowed_gamma & suppress_gamma
         safe_rate = jnp.maximum(r, 1e-12)
-        isi_gamma = (
-            jax.random.gamma(subkey_gamma, float(c.gamma_order), shape=batch)
-            / (safe_rate * c.gamma_order)
-        )
+        isi_gamma = jax.random.gamma(subkey_gamma, float(c.gamma_order), shape=batch) / (safe_rate * c.gamma_order)
         isi_gamma = isi_gamma.astype(dtype)
         draw_gamma = jnp.where(
             active_gamma,
@@ -303,9 +279,7 @@ def population_encode(
     if c.ndim != 1:
         raise ShapeError(f"centers must be 1-D, got shape {tuple(c.shape)}.")
     if w.shape != c.shape:
-        raise ShapeError(
-            f"widths must match centers shape {tuple(c.shape)}, got {tuple(w.shape)}."
-        )
+        raise ShapeError(f"widths must match centers shape {tuple(c.shape)}, got {tuple(w.shape)}.")
     dtype = jnp.result_type(x, c, w, 1.0)
     x, c, w = x.astype(dtype), c.astype(dtype), w.astype(dtype)
     if not is_tracer(w) and bool(jnp.any(w <= 0.0)):

@@ -25,10 +25,5 @@ print(f"spikes in 1 s: {n_spikes}")
 quiet_aff, driven_aff = Afferents(n_muscles=1), Afferents(n_muscles=1)
 for _ in range(2000):
     quiet = quiet_aff.step(length=0.95, velocity=0.0, force=2.0, dt=0.001)
-    driven = driven_aff.step(
-        length=0.95, velocity=0.0, force=2.0, gamma_static=70.0, dt=0.001
-    )
-print(
-    f"rest II={float(quiet.ii_rate[0]):.1f} Hz, "
-    f"with static gamma={float(driven.ii_rate[0]):.1f} Hz"
-)
+    driven = driven_aff.step(length=0.95, velocity=0.0, force=2.0, gamma_static=70.0, dt=0.001)
+print(f"rest II={float(quiet.ii_rate[0]):.1f} Hz, with static gamma={float(driven.ii_rate[0]):.1f} Hz")

@@ -48,8 +48,7 @@ class DictInfoAdapter:
             F = jnp.asarray(info["muscle_force"], dtype=jnp.float32)
         except KeyError as exc:
             raise ConfigurationError(
-                "DictInfoAdapter requires info keys 'muscle_length', "
-                f"'muscle_velocity', 'muscle_force'; missing {exc}."
+                f"DictInfoAdapter requires info keys 'muscle_length', 'muscle_velocity', 'muscle_force'; missing {exc}."
             ) from exc
         for name, arr in (
             ("muscle_length", L),
@@ -57,10 +56,7 @@ class DictInfoAdapter:
             ("muscle_force", F),
         ):
             if tuple(arr.shape) != (self.n_muscles,):
-                raise ConfigurationError(
-                    f"info[{name!r}] must have shape ({self.n_muscles},), "
-                    f"got {tuple(arr.shape)}."
-                )
+                raise ConfigurationError(f"info[{name!r}] must have shape ({self.n_muscles},), got {tuple(arr.shape)}.")
         return MechanicalState(length=L, velocity=V, force=F)
 
 
@@ -136,8 +132,7 @@ def wrap(
     """
     if gym is None:
         raise UnsupportedBackendError(
-            "gymnasium is not installed. Install the 'gymnasium' extra: "
-            "pip install bioafferent[gymnasium]."
+            "gymnasium is not installed. Install the 'gymnasium' extra: pip install bioafferent[gymnasium]."
         )
     pairs = list(joints) if joints is not None else _infer_joints(env.observation_space)
     adapter = _AutoJoints(pairs, moment_arm, rest_force)
@@ -192,14 +187,10 @@ class AfferentWrapper(_Base):  # type: ignore[valid-type, misc]
     ) -> None:
         if gym is None:
             raise UnsupportedBackendError(
-                "gymnasium is not installed. Install the 'gymnasium' extra: "
-                "pip install bioafferent[gymnasium]."
+                "gymnasium is not installed. Install the 'gymnasium' extra: pip install bioafferent[gymnasium]."
             )
         if observation_mode not in ("concat", "dict"):
-            raise ConfigurationError(
-                f"observation_mode must be 'concat' or 'dict', "
-                f"got {observation_mode!r}."
-            )
+            raise ConfigurationError(f"observation_mode must be 'concat' or 'dict', got {observation_mode!r}.")
         if not dt > 0.0:
             raise ConfigurationError(f"dt must be positive, got {dt}.")
         super().__init__(env)
@@ -242,9 +233,7 @@ class AfferentWrapper(_Base):  # type: ignore[valid-type, misc]
                 spaces_dict["spikes"] = spaces.MultiBinary(3 * n)
             return spaces.Dict(spaces_dict)
         extra = 3 * n + (3 * n if self.afferents.encoder else 0)
-        low = np.concatenate(
-            [np.asarray(base_space.low).ravel(), np.zeros(extra, dtype=np.float32)]
-        )
+        low = np.concatenate([np.asarray(base_space.low).ravel(), np.zeros(extra, dtype=np.float32)])
         high = np.concatenate(
             [
                 np.asarray(base_space.high).ravel(),
@@ -266,9 +255,7 @@ class AfferentWrapper(_Base):  # type: ignore[valid-type, misc]
         ii = np.asarray(jax.device_get(out.ii_rate), dtype=np.float32)
         ib = np.asarray(jax.device_get(out.ib_rate), dtype=np.float32)
         spikes: np.ndarray | None = (
-            np.asarray(jax.device_get(out.spikes), dtype=np.int8)
-            if out.spikes is not None
-            else None
+            np.asarray(jax.device_get(out.spikes), dtype=np.int8) if out.spikes is not None else None
         )
         if isinstance(self.observation_space, spaces.Dict):
             obs_out = dict(obs) if isinstance(obs, dict) else {"obs": obs}

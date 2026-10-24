@@ -14,9 +14,7 @@ regression and validation tests, not as exact digitized reproductions.
 import jax.numpy as jnp
 
 
-def vannucci_ramp_hold(
-    length: float = 0.95, velocity: float = 0.0, dt: float = 0.001, steps: int = 2000
-):
+def vannucci_ramp_hold(length: float = 0.95, velocity: float = 0.0, dt: float = 0.001, steps: int = 2000):
     """Generate a synthetic ramp-and-hold input matching Vannucci 2017 validation.
 
     Returns arrays of length (steps,) for time-step inputs.
@@ -25,16 +23,20 @@ def vannucci_ramp_hold(
     n_base = 500
     n_ramp = 1100
     n_hold = steps - n_base - n_ramp
-    lengths = jnp.concatenate([
-        jnp.ones(n_base) * 0.95,
-        jnp.linspace(0.95, 0.95 + 0.11 * (n_ramp * dt), n_ramp),
-        jnp.ones(max(n_hold, 1)) * (0.95 + 0.11 * (n_ramp * dt)),
-    ])[:steps]
-    velocities = jnp.concatenate([
-        jnp.zeros(n_base),
-        jnp.ones(n_ramp) * 0.11,
-        jnp.zeros(max(n_hold, 1)),
-    ])[:steps]
+    lengths = jnp.concatenate(
+        [
+            jnp.ones(n_base) * 0.95,
+            jnp.linspace(0.95, 0.95 + 0.11 * (n_ramp * dt), n_ramp),
+            jnp.ones(max(n_hold, 1)) * (0.95 + 0.11 * (n_ramp * dt)),
+        ]
+    )[:steps]
+    velocities = jnp.concatenate(
+        [
+            jnp.zeros(n_base),
+            jnp.ones(n_ramp) * 0.11,
+            jnp.zeros(max(n_hold, 1)),
+        ]
+    )[:steps]
     return lengths, velocities
 
 

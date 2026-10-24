@@ -74,9 +74,7 @@ class GolgiTendonOrgan:
         check_finite("force", F)
         F = jnp.broadcast_to(F, batch)
         if not is_tracer(F) and bool(jnp.any(F < 0.0)):
-            raise InvalidStateError(
-                "force must be non-negative (tendon compression is unmodelled)."
-            )
+            raise InvalidStateError("force must be non-negative (tendon compression is unmodelled).")
 
         def _target(s: jax.Array) -> tuple[jax.Array, jax.Array]:
             tau = jnp.full(batch, c.tau_force, dtype=s.dtype)
@@ -85,23 +83,13 @@ class GolgiTendonOrgan:
         if c.integrator == "exponential":
             f_new = integ.exponential_step(_target, state.force_filtered, dt_val)
         elif c.integrator == "euler":
-            f_new = integ.euler_step(
-                lambda s: (F - s) / c.tau_force, state.force_filtered, dt_val
-            )
+            f_new = integ.euler_step(lambda s: (F - s) / c.tau_force, state.force_filtered, dt_val)
         else:
-            f_new = integ.rk2_step(
-                lambda s: (F - s) / c.tau_force, state.force_filtered, dt_val
-            )
-        ib = dyn.gto_transduction(
-            f_new, c.threshold, c.gain, c.saturation_force, c.baseline, c.max_rate
-        )
-        return GTOState(force_filtered=f_new), GTOOutput(
-            ib_rate=ib, force_filtered=f_new
-        )
+            f_new = integ.rk2_step(lambda s: (F - s) / c.tau_force, state.force_filtered, dt_val)
+        ib = dyn.gto_transduction(f_new, c.threshold, c.gain, c.saturation_force, c.baseline, c.max_rate)
+        return GTOState(force_filtered=f_new), GTOOutput(ib_rate=ib, force_filtered=f_new)
 
-    def rollout(
-        self, state: GTOState, force: jax.Array, dt: float = 0.001
-    ) -> tuple[GTOState, GTOOutput]:
+    def rollout(self, state: GTOState, force: jax.Array, dt: float = 0.001) -> tuple[GTOState, GTOOutput]:
         """Run a ``(time, ...)`` force sequence with ``jax.lax.scan``."""
 
         def _body(s: GTOState, f: jax.Array) -> tuple[GTOState, GTOOutput]:

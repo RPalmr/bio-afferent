@@ -75,12 +75,8 @@ def test_static_gamma_raises_resting_and_hold_discharge(spindle):
 def test_ii_mostly_length_not_velocity(spindle):
     _, ia, ii = _run(spindle, gd=70.0, gs=0.0)
     n_base, n_ramp = 500, 1100
-    ia_gain = float(ia[n_base : n_base + n_ramp].max()) / max(
-        float(ia[-200:].mean()), 1e-6
-    )
-    ii_gain = float(ii[n_base : n_base + n_ramp].max()) / max(
-        float(ii[-200:].mean()), 1e-6
-    )
+    ia_gain = float(ia[n_base : n_base + n_ramp].max()) / max(float(ia[-200:].mean()), 1e-6)
+    ii_gain = float(ii[n_base : n_base + n_ramp].max()) / max(float(ii[-200:].mean()), 1e-6)
     assert ia_gain > ii_gain, "Ia must be relatively more velocity-driven than II"
 
 

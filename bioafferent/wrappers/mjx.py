@@ -42,8 +42,7 @@ def mjx_available() -> bool:
 def _require_mjx() -> None:
     if _mjx is None:
         raise UnsupportedBackendError(
-            "mujoco-mjx is not installed. Install the 'mjx' extra: "
-            "pip install bioafferent[mjx]."
+            "mujoco-mjx is not installed. Install the 'mjx' extra: pip install bioafferent[mjx]."
         )
 
 
@@ -101,20 +100,11 @@ def extract_mjx_mechanics(
         afor = jnp.asarray(data.actuator_force)
     except AttributeError as exc:
         raise UnsupportedBackendError(
-            "MJX data lacks actuator_length/_velocity/_force arrays; "
-            "this model structure is unsupported."
+            "MJX data lacks actuator_length/_velocity/_force arrays; this model structure is unsupported."
         ) from exc
-    ids = (
-        jnp.arange(alen.shape[0])
-        if actuator_ids is None
-        else jnp.asarray(actuator_ids, dtype=jnp.int32)
-    )
+    ids = jnp.arange(alen.shape[0]) if actuator_ids is None else jnp.asarray(actuator_ids, dtype=jnp.int32)
     if rest_lengths is None:
-        rest = (
-            mjx_rest_lengths(model, ids, length_scale)
-            if model is not None
-            else alen[ids]
-        )
+        rest = mjx_rest_lengths(model, ids, length_scale) if model is not None else alen[ids]
     else:
         rest = jnp.asarray(rest_lengths)
     return MechanicalState(
