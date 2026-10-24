@@ -36,6 +36,23 @@ jobs:
           pip install build
           python -m build
 
+  jax-compat:
+    runs-on: ubuntu-latest
+    env:
+      JAX_VERSION: "0.4.20"
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+      - name: install with older JAX
+        run: |
+          pip install build
+          pip install ".[dev,gymnasium,mujoco,mjx]"
+          pip install "jax==${JAX_VERSION}" "jaxlib==${JAX_VERSION}"
+      - name: tests
+        run: pytest tests/ -q --ignore=tests/performance
+
   docs:
     runs-on: ubuntu-latest
     steps:
