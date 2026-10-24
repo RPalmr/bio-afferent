@@ -70,8 +70,9 @@ class MuscleSpindle:
         shape = tuple(shape)
         tension = jnp.zeros(shape + (3,), dtype=self.dtype)
         act = jnp.zeros(shape, dtype=self.dtype)
+        hist = jnp.zeros(shape, dtype=self.dtype)
         return SpindleState(
-            tension=tension, activation_dynamic=act, activation_static=act
+            tension=tension, activation_dynamic=act, activation_static=act, history=hist
         )
 
     def _check_state(self, state: SpindleState) -> tuple[int, ...]:
@@ -199,6 +200,24 @@ class MuscleSpindle:
             tension = integ.rk2_step(_rk_rhs, state.tension, dt_val)
         tension = jnp.maximum(tension, 0.0)
 
+        # Thixotropy / history effect (Blum et al. 2017): decay previous tension
+        # change rate with exponential filter; scale dynamics by history.
+        if c.enable_thixotropy:
+            # Compute tension change rate as proxy for mechanical history
+            tension_change = (
+                jnp.sum(tension - state.tension, axis=-1)
+                / jnp.maximum(dt_val, 1e-9)
+            )
+            alpha_hist = 1.0 - jnp.exp(-dt_val / c.thixotropy_tau)
+            new_history = state.history + (tension_change - state.history) * alpha_hist
+            # Apply thixotropic scaling: history-dependent offset
+            tension = tension + (
+                c.thixotropy_scale * new_history
+                * jnp.ones(tension.shape[-1:], dtype=tension.dtype)
+            )
+        else:
+            new_history = state.history
+
         potentials = dyn.receptor_potentials(tension, self._g, self._p, self._t0)
         ia_rate, ii_rate = dyn.combine_afferents(
             potentials,
@@ -209,7 +228,10 @@ class MuscleSpindle:
             c.max_rate,
         )
         new_state = SpindleState(
-            tension=tension, activation_dynamic=a_d, activation_static=a_s
+            tension=tension,
+            activation_dynamic=a_d,
+            activation_static=a_s,
+            history=new_history,
         )
         return new_state, SpindleOutput(
             ia_rate=ia_rate,

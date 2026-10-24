@@ -48,6 +48,15 @@ pip install -e .
 
 Requires Python ≥3.10; JAX and NumPy install automatically.
 
+## v0.2.0 capabilities
+
+New in this release:
+
+- **Spike encoding**: absolute + relative refractory periods (`refractory_s`, `relative_refractory_s`, `relative_refractory_factor`).
+- **Spindle thixotropy**: history-dependent dynamics (`SpindleConfig.enable_thixotropy`) following Blum et al. (2017).
+- **Published validation**: synthetic fixtures (`tests/data/published_fixtures.py`) against Vannucci 2017 (spindle ramp-and-hold) and Houk & Simon 1967 (GTO force steps); regression suite in `tests/regression/test_published_validation.py`.
+- **Stress-tested** against massive repos (`jax`, `brax`, `mujoco`, `dm_control`, `numpy`, `opensim-core`) — adapter works with real `MjData`; dependency isolation verified.
+
 ## Quick start
 
 ```python

@@ -79,6 +79,11 @@ class SpindleConfig:
     baseline_ii: float = 5.0  # Hz
     max_rate: float = 300.0  # Hz hard cap
 
+    # --- thixotropy / history effects (Blum et al. 2017) ---
+    enable_thixotropy: bool = False
+    thixotropy_tau: float = 0.5  # history decay time constant in seconds
+    thixotropy_scale: float = 0.1  # history effect magnitude (dimensionless)
+
     integrator: str = "exponential"
     dtype: str = "float32"
 
@@ -87,6 +92,10 @@ class SpindleConfig:
             raise ConfigurationError(
                 f"dtype must be 'float32' or 'float64', got {self.dtype!r}."
             )
+        if not self.thixotropy_tau > 0.0:
+            raise ConfigurationError("thixotropy_tau must be strictly positive.")
+        if not self.thixotropy_scale >= 0.0:
+            raise ConfigurationError("thixotropy_scale must be non-negative.")
         if self.integrator not in ("euler", "rk2", "exponential"):
             raise ConfigurationError(
                 f"Unknown integrator {self.integrator!r}. "

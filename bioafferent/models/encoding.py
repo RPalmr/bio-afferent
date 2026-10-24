@@ -52,6 +52,9 @@ class EncoderConfig:
     gamma_order: int = 4  # renewal order (shape); >= 1, integer
     max_rate_hz: float = 1000.0  # validity cap for r * dt <= 1 checks
     refractory_s: float = 0.0  # absolute refractory period in seconds
+    relative_refractory_s: float = 0.0  # relative refractory duration after absolute
+    relative_refractory_factor: float = 1.0  # probability multiplier
+    # during relative refractory (0=full suppression, 1=no effect)
     dtype: str = "float32"
 
     def __post_init__(self) -> None:
@@ -70,6 +73,22 @@ class EncoderConfig:
             raise ConfigurationError(
                 "refractory_s must be finite and non-negative, got "
                 f"{self.refractory_s}."
+            )
+        if (
+            not self.relative_refractory_s >= 0.0
+            or not math.isfinite(self.relative_refractory_s)
+        ):
+            raise ConfigurationError(
+                "relative_refractory_s must be finite and non-negative, got "
+                f"{self.relative_refractory_s}."
+            )
+        if (
+            not (0.0 <= self.relative_refractory_factor <= 1.0)
+            or not math.isfinite(self.relative_refractory_factor)
+        ):
+            raise ConfigurationError(
+                "relative_refractory_factor must be in [0, 1], got "
+                f"{self.relative_refractory_factor}."
             )
         if self.dtype not in ("float32", "float64"):
             raise ConfigurationError(
@@ -96,7 +115,8 @@ class AfferentEncoder:
         if isinstance(shape, int):
             shape = (shape,)
         dtype = jnp.float32 if self.config.dtype == "float32" else jnp.float64
-        return EncoderState(residual=jnp.zeros(tuple(shape), dtype=dtype))
+        zeros = jnp.zeros(tuple(shape), dtype=dtype)
+        return EncoderState(residual=zeros, relative_residual=zeros)
 
     def step(
         self,
@@ -141,46 +161,119 @@ class AfferentEncoder:
             )
 
         new_key, subkey = jax.random.split(key)
+        # Relative refractory tracking: separate countdown from absolute
+        # When absolute > 0: full suppression. When absolute == 0 but relative > 0:
+        # reduced probability by factor. Both count down independently.
+        abs_rem = jnp.maximum(state.residual - dt_val, 0.0)
+        rel_rem = jnp.where(
+            state.residual > 0.0,
+            jnp.zeros_like(state.relative_residual),  # relative only after absolute
+            jnp.maximum(state.relative_residual - dt_val, 0.0),
+        )
         if c.mode in ("poisson", "inhomogeneous"):
-            if c.refractory_s <= 0.0:
+            if c.refractory_s <= 0.0 and c.relative_refractory_s <= 0.0:
                 spikes = jax.random.bernoulli(subkey, lam).astype(bool)
                 return new_key, state, EncoderOutput(spikes=spikes, rate=r)
             available = state.residual <= 0.0
-            spikes = jax.random.bernoulli(subkey, lam) & available
-            remaining = jnp.maximum(state.residual - dt_val, 0.0)
-            new_residual = jnp.where(
-                spikes, jnp.asarray(c.refractory_s, dtype=dtype), remaining
+            in_relative = (state.residual <= 0.0) & (state.relative_residual > 0.0)
+            prob = jnp.where(
+                in_relative,
+                jnp.clip(lam * c.relative_refractory_factor, 0.0, 1.0),
+                jnp.where(available, lam, 0.0),
+            )
+            spikes = jax.random.bernoulli(subkey, prob).astype(bool) & available
+            # If spike fired: reset both countdowns. Otherwise: count down.
+            new_abs_rem = jnp.where(
+                spikes,
+                jnp.where(
+                    c.refractory_s > 0.0,
+                    jnp.asarray(c.refractory_s, dtype=dtype),
+                    jnp.zeros_like(abs_rem),
+                ),
+                abs_rem,
+            )
+            new_rel_rem = jnp.where(
+                spikes,
+                jnp.where(
+                    c.relative_refractory_s > 0.0,
+                    jnp.asarray(c.relative_refractory_s, dtype=dtype),
+                    jnp.zeros_like(rel_rem),
+                ),
+                rel_rem,
             )
             return (
                 new_key,
-                EncoderState(residual=new_residual),
+                EncoderState(residual=new_abs_rem, relative_residual=new_rel_rem),
                 EncoderOutput(spikes=spikes, rate=r),
             )
-        # Gamma-renewal: countdown time-to-next-spike; on crossing, emit a
-        # spike and draw Gamma(order, scale=1/(r*order)) ISI (mean 1/r).
-        # Exact-zero residuals mark fresh/silent units: they draw an ISI
-        # without spiking so simulations never emit a spurious t=0 spike and
-        # zero-rate units stay silent with residual pinned at zero.
-        fresh = state.residual <= 0.0
-        waiting = state.residual - dt_val
-        crossed = waiting <= 0.0
-        active = r > 0.0
-        fired = crossed & active & (~fresh)
-        safe_rate = jnp.maximum(r, 1e-12)
-        isi = jax.random.gamma(subkey, float(c.gamma_order), shape=batch) / (
-            safe_rate * c.gamma_order
+        # Gamma-renewal with relative refractory: suppress emission probability
+        # by factor when in relative refractory period.
+        fresh_gamma = state.residual <= 0.0
+        waiting_gamma = state.residual - dt_val
+        crossed_gamma = waiting_gamma <= 0.0
+        active_gamma = r > 0.0
+        in_rel_gamma = (state.residual <= 0.0) & (state.relative_residual > 0.0)
+        emission_factor = jnp.where(in_rel_gamma, c.relative_refractory_factor, 1.0)
+        allowed_gamma = crossed_gamma & active_gamma & (~fresh_gamma)
+        suppress_key, subkey_gamma = jax.random.split(subkey)
+        suppress_gamma = (
+            jax.random.bernoulli(suppress_key, emission_factor)
+            .astype(bool)
         )
-        isi = isi.astype(dtype)
-        draw = jnp.where(
-            active,
-            jnp.maximum(isi, jnp.asarray(c.refractory_s, dtype=dtype)),
+        fired_gamma = allowed_gamma & suppress_gamma
+        safe_rate = jnp.maximum(r, 1e-12)
+        isi_gamma = (
+            jax.random.gamma(subkey_gamma, float(c.gamma_order), shape=batch)
+            / (safe_rate * c.gamma_order)
+        )
+        isi_gamma = isi_gamma.astype(dtype)
+        draw_gamma = jnp.where(
+            active_gamma,
+            jnp.maximum(isi_gamma, jnp.asarray(c.refractory_s, dtype=dtype)),
             jnp.zeros(batch, dtype=dtype),
         )
-        new_residual = jnp.where(crossed | fresh, draw, jnp.maximum(waiting, 0.0))
+        # Suppressed by relative refractory: continue counting down
+        new_residual_gamma_abs = jnp.where(
+            fired_gamma,
+            jnp.where(
+                c.refractory_s > 0.0,
+                jnp.asarray(c.refractory_s, dtype=dtype),
+                jnp.zeros(batch, dtype=dtype),
+            ),
+            jnp.where(
+                allowed_gamma & (~fired_gamma) & in_rel_gamma,
+                jnp.maximum(waiting_gamma, 0.0),
+                jnp.where(
+                    crossed_gamma | fresh_gamma,
+                    draw_gamma,
+                    jnp.maximum(waiting_gamma, 0.0),
+                ),
+            ),
+        )
+        new_residual_gamma_rel = jnp.where(
+            fired_gamma,
+            jnp.where(
+                c.relative_refractory_s > 0.0,
+                jnp.asarray(c.relative_refractory_s, dtype=dtype),
+                jnp.zeros(batch, dtype=dtype),
+            ),
+            jnp.where(
+                allowed_gamma & (~fired_gamma) & in_rel_gamma,
+                jnp.maximum(state.relative_residual - dt_val, 0.0),
+                jnp.where(
+                    fresh_gamma,
+                    jnp.zeros(batch, dtype=dtype),
+                    jnp.maximum(state.relative_residual - dt_val, 0.0),
+                ),
+            ),
+        )
         return (
             new_key,
-            EncoderState(residual=new_residual),
-            EncoderOutput(spikes=fired, rate=r),
+            EncoderState(
+                residual=new_residual_gamma_abs,
+                relative_residual=new_residual_gamma_rel,
+            ),
+            EncoderOutput(spikes=fired_gamma, rate=r),
         )
 
 
