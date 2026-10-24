@@ -16,6 +16,7 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 
+from bioafferent.core.exceptions import ShapeError
 from bioafferent.core.state import EncoderState, GTOState, SpindleState
 from bioafferent.models.encoding import AfferentEncoder, EncoderConfig
 from bioafferent.models.gto import GolgiTendonOrgan
@@ -111,3 +112,97 @@ class Afferents:
             ib_rate=go.ib_rate,
             spikes=spikes,
         )
+
+    def rollout(
+        self,
+        length: object,
+        velocity: object = 0.0,
+        force: object = 0.0,
+        gamma_dynamic: object = 0.0,
+        gamma_static: object = 0.0,
+        dt: float = 0.001,
+    ) -> AfferentRates:
+        """Run a ``(time, ...)`` input sequence with ``jax.lax.scan``.
+
+        The leading axis of ``length`` is time. Other inputs may be scalar
+        (broadcast over time) or share that leading axis; remaining axes
+        follow :meth:`step` broadcasting rules. Advances the facade to the
+        final state and returns stacked outputs (each leaf gains a leading
+        time axis).
+
+        This method mutates the facade, so it is intended for host-side
+        rollouts. Use ``MuscleSpindle.rollout`` / ``GolgiTendonOrgan.rollout``
+        for pure functions that can be composed inside ``jit``.
+        """
+        L = jnp.asarray(length)
+        if L.ndim == 0:
+            raise ShapeError(
+                "length must have a leading time axis, e.g. shape (time,) or "
+                "(time, n_muscles)."
+            )
+
+        def sequence(name: str, value: object) -> jax.Array:
+            arr = jnp.asarray(value)
+            if arr.ndim == 0:
+                return jnp.broadcast_to(arr, L.shape)
+            if arr.shape[0] != L.shape[0]:
+                raise ShapeError(
+                    f"{name} leading axis ({arr.shape[0]}) must match the time "
+                    f"axis of length ({L.shape[0]})."
+                )
+            try:
+                jnp.broadcast_shapes(arr.shape[1:], L.shape[1:])
+            except ValueError as exc:
+                raise ShapeError(
+                    f"{name} with shape {tuple(arr.shape)} is not "
+                    f"broadcast-compatible with length {tuple(L.shape)}."
+                ) from exc
+            return arr
+
+        V = sequence("velocity", velocity)
+        F = sequence("force", force)
+        gd = sequence("gamma_dynamic", gamma_dynamic)
+        gs = sequence("gamma_static", gamma_static)
+
+        def body(
+            carry: tuple[SpindleState, GTOState, EncoderState | None, jax.Array],
+            inputs: tuple[jax.Array, ...],
+        ) -> tuple[
+            tuple[SpindleState, GTOState, EncoderState | None, jax.Array],
+            AfferentRates,
+        ]:
+            sp_state, go_state, enc_state, key = carry
+            L_t, V_t, F_t, gd_t, gs_t = inputs
+            sp_state, sp = self.spindle.step(sp_state, L_t, V_t, gd_t, gs_t, dt)
+            go_state, go = self.gto.step(go_state, F_t, dt)
+            spikes: jax.Array | None = None
+            if self.encoder is not None and enc_state is not None:
+                rates = jnp.concatenate([sp.ia_rate, sp.ii_rate, go.ib_rate])
+                key, enc_state, enc = self.encoder.step(key, enc_state, rates, dt)
+                spikes = enc.spikes
+            return (
+                sp_state,
+                go_state,
+                enc_state,
+                key,
+            ), AfferentRates(
+                ia_rate=sp.ia_rate,
+                ii_rate=sp.ii_rate,
+                ib_rate=go.ib_rate,
+                spikes=spikes,
+            )
+
+        (
+            (
+                self._spindle_state,
+                self._gto_state,
+                self._enc_state,
+                self._key,
+            ),
+            out,
+        ) = jax.lax.scan(
+            body,
+            (self._spindle_state, self._gto_state, self._enc_state, self._key),
+            (L, V, F, gd, gs),
+        )
+        return out

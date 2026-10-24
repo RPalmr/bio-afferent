@@ -26,6 +26,9 @@ out.ia_rate, out.ii_rate, out.ib_rate  # Hz, one entry per muscle
 - `aff.reset()` returns states to rest; `aff.reseed(seed)` restarts the
   spike-encoding random stream. With `encoder_config` set, `out.spikes`
   holds one boolean per afferent (Ia, II, Ib concatenated).
+- `aff.rollout(length, velocity, force)` runs a `(time, ...)` input sequence
+  through `jax.lax.scan` from the current state and returns stacked outputs.
+  Scalars broadcast over time; other inputs need a leading time axis.
 
 ![Spike trains under a rate step](_static/spikes_raster.png)
 

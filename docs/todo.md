@@ -21,8 +21,7 @@ Post-0.1.0 implementation work, ordered by impact. `main` is ahead of the
 
 - [ ] Add an end-to-end MyoSuite or MuJoCo Playground/MJX example that trains a
       policy on Ia/II/Ib observations.
-- [ ] Add a `lax.scan` rollout API for spindle + GTO + encoder. The facade and
-      Gymnasium wrapper currently advance one timestep at a time.
+- [x] Add a `lax.scan` rollout API for spindle + GTO + encoder.
 - [ ] Support `gym.vector.VectorEnv` (or document the MJX path as the supported
       vectorised route) and remove per-step `jax.device_get` host syncs where
       possible.
