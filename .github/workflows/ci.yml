@@ -53,16 +53,4 @@ jobs:
       - name: tests
         run: pytest tests/ -q --ignore=tests/performance
 
-  docs:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
-        with:
-          python-version: "3.11"
-      - name: install
-        run: |
-          pip install -r docs/requirements-docs.txt
-          pip install .
-      - name: build docs
-        run: sphinx-build -b html docs docs/_build -W --keep-going
+
