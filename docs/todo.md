@@ -9,7 +9,7 @@ Post-0.1.0 implementation work, ordered by impact. `main` is ahead of the
       (Vannucci 2017 ramp-and-hold for Ia/II, Houk & Simon 1967 force steps for
       Ib). Assert rate trajectories numerically; keep fixtures under
       `tests/data/`.
-- [ ] Add a parameter provenance table mapping every `SpindleConfig` and
+- [x] Add a parameter provenance table mapping every `SpindleConfig` and
       `GTOConfig` field to a published source or an explicit engineering
       calibration choice. Link it from `docs/physiology.md`.
 - [ ] Add a calibration script that regenerates the figures in `docs/_static/`

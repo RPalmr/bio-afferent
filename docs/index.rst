@@ -61,6 +61,7 @@ step for 1000 environments x 20 muscles on CPU.
    usage
    architecture
    physiology
+   parameters
    performance
    api
    changelog

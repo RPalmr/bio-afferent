@@ -8,7 +8,8 @@
   source; coefficients are documented calibration choices, not source values.
 
 Bioafferent implements **engineering adaptations** throughout. Do not describe
-its outputs as exact reproductions of published simulations.
+its outputs as exact reproductions of published simulations. Per-field defaults
+and provenance are listed in [parameters.md](parameters.md).
 
 ## Muscle spindle (Ia/II)
 
