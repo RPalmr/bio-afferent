@@ -4,7 +4,7 @@ import jax
 import jax.numpy as jnp
 import pytest
 
-from bioafferent import AfferentEncoder, EncoderConfig
+from bioafferent import AfferentEncoder, EncoderConfig, ShapeError, population_encode
 from bioafferent.core.exceptions import ConfigurationError, InvalidStateError
 
 
@@ -156,3 +156,32 @@ def test_refractory_encoder_jittable():
     key, st, out = f(key, st)
     assert out.spikes.shape == (4,)
     assert st.residual.shape == (4,)
+
+
+def test_population_encode_tuning_curves():
+    centers = jnp.array([-1.0, 0.0, 1.0])
+    widths = jnp.array([0.5, 0.5, 0.5])
+    rates = population_encode(0.0, centers, widths, max_rate_hz=80.0)
+    assert rates.shape == (3,)
+    assert int(jnp.argmax(rates)) == 1
+    assert float(rates[1]) == pytest.approx(80.0)
+    assert bool(jnp.all(rates <= 80.0))
+    batch = population_encode(jnp.array([-1.0, 0.0, 1.0]), centers, widths)
+    assert batch.shape == (3, 3)
+    assert bool(jnp.allclose(jnp.diag(batch), 100.0))
+
+
+def test_population_encode_validates_inputs():
+    centers = jnp.array([-1.0, 0.0, 1.0])
+    with pytest.raises(ShapeError):
+        population_encode(0.0, centers, jnp.ones((2,)))
+    with pytest.raises(ConfigurationError):
+        population_encode(0.0, centers, jnp.array([0.5, -0.5, 0.5]))
+    with pytest.raises(ConfigurationError):
+        population_encode(0.0, centers, jnp.ones((3,)), max_rate_hz=0.0)
+
+
+def test_population_encode_jittable():
+    centers = jnp.linspace(-1.0, 1.0, 5)
+    f = jax.jit(lambda x: population_encode(x, centers, jnp.full((5,), 0.4)))
+    assert f(0.2).shape == (5,)

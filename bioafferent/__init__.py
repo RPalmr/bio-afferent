@@ -14,7 +14,12 @@ from bioafferent.core.exceptions import (
 )
 from bioafferent.core.integration import IntegrationConfig
 from bioafferent.core.state import EncoderState, GTOState, SpindleState
-from bioafferent.models.encoding import AfferentEncoder, EncoderConfig
+from bioafferent.models.decoding import decode_rates
+from bioafferent.models.encoding import (
+    AfferentEncoder,
+    EncoderConfig,
+    population_encode,
+)
 from bioafferent.models.gto import GolgiTendonOrgan
 from bioafferent.models.gto_parameters import GTOConfig
 from bioafferent.models.spindle import MuscleSpindle
@@ -44,5 +49,7 @@ __all__ = [
     "SpindleState",
     "UnsupportedBackendError",
     "__version__",
+    "decode_rates",
+    "population_encode",
     "wrap",
 ]

@@ -22,6 +22,13 @@ Models
 .. autoclass:: bioafferent.AfferentEncoder
    :members: step, init_state
 
+Encoding and decoding
+---------------------
+
+.. autofunction:: bioafferent.population_encode
+
+.. autofunction:: bioafferent.decode_rates
+
 Configurations
 --------------
 

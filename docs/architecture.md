@@ -8,8 +8,9 @@ Dependency direction: `core <- models <- wrappers`.
   (pure elementwise equations), `integration` (Euler / RK2 / exponential-Euler
   steppers; models supply RHS, never solver loops).
 - **models**: `spindle` (`MuscleSpindle`), `gto` (`GolgiTendonOrgan`),
-  `encoding` (`AfferentEncoder`); immutable validated configs
-  (`SpindleConfig`, `GTOConfig`, `EncoderConfig`, `IntegrationConfig`).
+  `encoding` (`AfferentEncoder`, `population_encode`), `decoding`
+  (`decode_rates`); immutable validated configs (`SpindleConfig`, `GTOConfig`,
+  `EncoderConfig`, `IntegrationConfig`).
 - **wrappers**: `base` (`MechanicalState`, `MechanicalAdapter` protocol),
   `gymnasium` (`wrap` zero-config entry point, `AfferentWrapper`,
   `DictInfoAdapter`), `mujoco` (CPU adapter, optional dep), `mjx`

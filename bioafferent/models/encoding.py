@@ -29,7 +29,11 @@ from typing import NamedTuple
 import jax
 import jax.numpy as jnp
 
-from bioafferent.core.exceptions import ConfigurationError, InvalidStateError
+from bioafferent.core.exceptions import (
+    ConfigurationError,
+    InvalidStateError,
+    ShapeError,
+)
 from bioafferent.core.state import EncoderState
 from bioafferent.core.validation import (
     as_array,
@@ -178,3 +182,40 @@ class AfferentEncoder:
             EncoderState(residual=new_residual),
             EncoderOutput(spikes=fired, rate=r),
         )
+
+
+def population_encode(
+    values: object,
+    centers: object,
+    widths: object,
+    max_rate_hz: float = 100.0,
+) -> jax.Array:
+    """Gaussian population code: ``values`` to per-unit rates in Hz.
+
+    Args:
+        values: scalar or array with shape ``(...)``.
+        centers: preferred values, shape ``(n_units,)``.
+        widths: tuning widths (same units as ``values``), shape ``(n_units,)``.
+        max_rate_hz: peak firing rate at the preferred value.
+
+    Returns:
+        Rates with shape ``(..., n_units)``, each in ``[0, max_rate_hz]``.
+        Pass them to :class:`AfferentEncoder` to generate spike trains.
+    """
+    if not max_rate_hz > 0.0:
+        raise ConfigurationError("max_rate_hz must be strictly positive.")
+    x = jnp.asarray(values)
+    c = jnp.asarray(centers)
+    w = jnp.asarray(widths)
+    if c.ndim != 1:
+        raise ShapeError(f"centers must be 1-D, got shape {tuple(c.shape)}.")
+    if w.shape != c.shape:
+        raise ShapeError(
+            f"widths must match centers shape {tuple(c.shape)}, got {tuple(w.shape)}."
+        )
+    dtype = jnp.result_type(x, c, w, 1.0)
+    x, c, w = x.astype(dtype), c.astype(dtype), w.astype(dtype)
+    if not is_tracer(w) and bool(jnp.any(w <= 0.0)):
+        raise ConfigurationError("widths must be strictly positive.")
+    z = (x[..., None] - c) / w
+    return max_rate_hz * jnp.exp(-0.5 * z * z)

@@ -68,3 +68,10 @@ The MJX variant (`extract_mjx_mechanics`) is pure JAX — combine it with
 The functional API (`MuscleSpindle`, `GolgiTendonOrgan`, `AfferentEncoder`)
 exposes explicit immutable states, PRNG keys, and integrators for full
 control. Formulation record: `physiology.md`. Architecture: `architecture.md`.
+
+Two analysis helpers sit alongside the encoders:
+
+- `population_encode(values, centers, widths)` turns continuous values into
+  Gaussian tuning-curve rates, ready for `AfferentEncoder`.
+- `decode_rates(spikes, dt, window_s)` recovers causal windowed rates in Hz
+  from binary spike trains.
