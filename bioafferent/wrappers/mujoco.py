@@ -40,12 +40,21 @@ def extract_mujoco_mechanics(
     length_scale: float = 1.0,
     velocity_scale: float = 1.0,
     force_scale: float = 1.0,
+    force_mode: str = "magnitude",
 ) -> MechanicalState:
     """Read actuator length/velocity/force into a :class:`MechanicalState`.
 
     Works with real ``mujoco.MjData`` and duck-typed test doubles. Raises
     :class:`UnsupportedBackendError` when mujoco is missing or the data lacks
     actuator arrays.
+
+    ``force_mode`` controls how signed actuator forces are mapped to the
+    non-negative tendon force expected by the GTO:
+
+    - ``"magnitude"`` (default): ``abs(force)``. MuJoCo muscle actuators report
+      negative force in the pulling direction, so magnitude is the tendon force.
+    - ``"positive"``: ``max(force, 0)`` for sources that already report a
+      non-negative tendon force.
     """
     if mujoco is None:
         raise UnsupportedBackendError(
@@ -69,8 +78,12 @@ def extract_mujoco_mechanics(
         raise ConfigurationError("rest_lengths must be positive with one entry per muscle.")
     if min(length_scale, velocity_scale, force_scale) <= 0.0:
         raise ConfigurationError("scale factors must be positive.")
+    if force_mode not in ("magnitude", "positive"):
+        raise ConfigurationError(f"force_mode must be 'magnitude' or 'positive', got {force_mode!r}.")
+    raw_force = afor[ids] * force_scale
+    force = np.abs(raw_force) if force_mode == "magnitude" else np.maximum(raw_force, 0.0)
     return MechanicalState(
         length=jnp.asarray(alen[ids] * length_scale / rest, dtype=jnp.float32),
         velocity=jnp.asarray(avel[ids] * velocity_scale / rest, dtype=jnp.float32),
-        force=jnp.asarray(np.maximum(afor[ids] * force_scale, 0.0), dtype=jnp.float32),
+        force=jnp.asarray(force, dtype=jnp.float32),
     )

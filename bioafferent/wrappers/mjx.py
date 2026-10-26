@@ -39,6 +39,14 @@ def mjx_available() -> bool:
     return _mjx is not None
 
 
+def _mjx_field(data: Any, name: str) -> Any:
+    """Read an MJX field, preferring the non-deprecated ``_impl`` location."""
+    impl = getattr(data, "_impl", None)
+    if impl is not None and hasattr(impl, name):
+        return getattr(impl, name)
+    return getattr(data, name)
+
+
 def _require_mjx() -> None:
     if _mjx is None:
         raise UnsupportedBackendError(
@@ -64,7 +72,7 @@ def mjx_rest_lengths(
     _require_mjx()
     assert _mjx is not None
     data = _mjx.forward(model, _mjx.make_data(model))
-    alen = jnp.asarray(data.actuator_length)
+    alen = jnp.asarray(_mjx_field(data, "actuator_length"))
     ids = (
         jnp.arange(alen.shape[0], dtype=jnp.int32)
         if actuator_ids is None
@@ -85,6 +93,7 @@ def extract_mjx_mechanics(
     velocity_scale: float = 1.0,
     force_scale: float = 1.0,
     model: Any = None,
+    force_mode: str = "magnitude",
 ) -> MechanicalState:
     """Pure-JAX extraction of per-muscle mechanics from MJX ``Data``.
 
@@ -93,11 +102,15 @@ def extract_mjx_mechanics(
     instead, or pass explicit ``rest_lengths``. Works on real MJX Data pytrees
     and duck-typed test doubles. Raises :class:`UnsupportedBackendError` when
     the actuator arrays are absent.
+
+    ``force_mode`` is ``"magnitude"`` (default; ``abs(force)`` for MuJoCo
+    muscle actuators, which report negative pulling force) or ``"positive"``
+    (``max(force, 0)`` for sources that already report tendon force).
     """
     try:
-        alen = jnp.asarray(data.actuator_length)
-        avel = jnp.asarray(data.actuator_velocity)
-        afor = jnp.asarray(data.actuator_force)
+        alen = jnp.asarray(_mjx_field(data, "actuator_length"))
+        avel = jnp.asarray(_mjx_field(data, "actuator_velocity"))
+        afor = jnp.asarray(_mjx_field(data, "actuator_force"))
     except AttributeError as exc:
         raise UnsupportedBackendError(
             "MJX data lacks actuator_length/_velocity/_force arrays; this model structure is unsupported."
@@ -107,10 +120,14 @@ def extract_mjx_mechanics(
         rest = mjx_rest_lengths(model, ids, length_scale) if model is not None else alen[ids]
     else:
         rest = jnp.asarray(rest_lengths)
+    if force_mode not in ("magnitude", "positive"):
+        raise ConfigurationError(f"force_mode must be 'magnitude' or 'positive', got {force_mode!r}.")
+    raw_force = jnp.take(afor, ids, axis=0) * force_scale
+    force = jnp.abs(raw_force) if force_mode == "magnitude" else jnp.maximum(raw_force, 0.0)
     return MechanicalState(
         length=jnp.take(alen, ids, axis=0) * length_scale / rest,
         velocity=jnp.take(avel, ids, axis=0) * velocity_scale / rest,
-        force=jnp.maximum(jnp.take(afor, ids, axis=0) * force_scale, 0.0),
+        force=force,
     )
 
 
