@@ -1,0 +1,18 @@
+{
+  "nrmse_range": {
+    "op": "<=",
+    "threshold": 0.15
+  },
+  "r2": {
+    "op": ">=",
+    "threshold": 0.8
+  },
+  "peak_latency_error_s": {
+    "op": "<=",
+    "threshold": 0.02
+  },
+  "abs_lag_s": {
+    "op": "<=",
+    "threshold": 0.02
+  }
+}
