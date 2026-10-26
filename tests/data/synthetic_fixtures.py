@@ -1,14 +1,16 @@
-"""Published validation fixtures for bioafferent.
+"""Synthetic protocol fixtures for regression tests.
 
-Sources:
-- Vannucci et al. 2017 (Front. Neurosci. 11:341): ramp-and-hold validation
-  with baseline 0.95 L0, ramp 0.11 L0/s, hold; dynamic/static gamma at 70 Hz.
-- Houk & Simon 1967 (J. Neurophysiol.): GTO static properties (threshold,
-  steep low-force sensitivity, saturation).
+These are *not* published data. They encode the qualitative stimulation
+protocols described in the literature so that changes in the model cannot
+silently break the documented behaviours:
 
-These fixtures contain synthetic reference traces approximating the published
-qualitative behaviors described in docs/physiology.md. They are intended for
-regression and validation tests, not as exact digitized reproductions.
+- Vannucci et al. 2017 (Front. Neurosci. 11:341): ramp-and-hold protocol with
+  baseline 0.95 L0, ramp 0.11 L0/s, hold; dynamic/static gamma at 70 Hz.
+- Houk & Simon 1967 (J. Neurophysiol.): GTO static force steps.
+
+Digitised published traces live under ``validation/data`` and are the only
+admissible evidence for validation. These fixtures are calibration/regression
+inputs, not validation evidence.
 """
 
 import jax.numpy as jnp

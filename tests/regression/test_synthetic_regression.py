@@ -1,8 +1,10 @@
-"""Published validation tests against synthetic fixtures approximating
-Vannucci 2017 (spindle ramp-and-hold) and Houk & Simon 1967 (GTO force steps).
+"""Synthetic regression tests for qualitative response features.
 
-These tests assert qualitative agreement with published response features,
-as documented in docs/physiology.md.
+These tests assert that the engineering defaults still produce the documented
+qualitative behaviours on synthetic protocol inputs. They are not scientific
+validation: the fixtures are not digitised experimental traces and the
+defaults were calibrated to produce these features. Held-out validation lives
+in ``validation/`` and requires the protocol in ``validation/protocol.md``.
 """
 
 import jax.numpy as jnp
@@ -13,7 +15,7 @@ from bioafferent import (
     MuscleSpindle,
     SpindleConfig,
 )
-from tests.data.published_fixtures import houk_gto_force_steps, vannucci_ramp_hold
+from tests.data.synthetic_fixtures import houk_gto_force_steps, vannucci_ramp_hold
 
 
 def test_vannucci_ramp_hold_ia_dynamic_overshoot():
